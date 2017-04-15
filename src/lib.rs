@@ -1,3 +1,7 @@
+extern crate bitreader;
+extern crate filebuffer;
+extern crate rayon;
+
 #[cfg(test)]
 mod tests {
     #[test]

@@ -1,75 +1,211 @@
-extern crate csv;
-extern crate bitreader;
+use std::fs;
+// use rayon::prelude::*;
+use std::collections::HashMap;
+use filebuffer::FileBuffer;
+use bitreader::BitReader;
 
-use std::fs::File;
-use std::io::SeekFrom;
-use std::io::Seek;
-use std::io::Read;
-use self::csv::Reader;
 
 pub struct DataLine {
-    pub lost: bool,
+    pub lost: u8,
+    pub tag: u16,
     pub channel: u8,
     pub edge: bool,
-    pub sweep: u32,
+    pub sweep: u16,
     pub time: u64,
 }
 
 pub fn main() -> Vec<DataLine> {
-    let file_path = r"C:\Users\Hagai\Documents\GitHub\Multiscaler_Image_Generator\PMT1_Readings_one_sweep_equals_one_frame.lst";
-    let start_of_data_pos: u64 = 1546;
-    let range = 8u32;
-    let timepatch = String::from("32");
+    // let file_path = r"C:\Users\Hagai\Documents\GitHub\rread_lst\TAG lens in fixed sample 3 - 62p 188kHz - zoom 4x - single 65.6 milliseconds sweep - 8 byte words - 1200 um ABOVE SAMPLE - 200 fps - unlocked to scanimage - BINARY LISTFILE - 300 mV threshold - 011.lst";
+    let file_path = r"C:\Users\Hagai\Documents\GitHub\rread_lst\TAG lens in fixed sample 3 - 62p 188kHz - zoom 4x - single 10 milliseconds sweep - 8 byte words - 130 um DEEP - 200 fps - unlocked to scanimage - BINARY LISTFILE - 300 mV threshold - 009.lst";
+    let start_of_data_pos: usize = 1572;
+    let range = 8u64;
+    let timepatch = String::from("5b");
     let returned_data_from_bytes = read_file_as_bytes(file_path, start_of_data_pos,
-                                                      timepatch, range);
+                                                      timepatch.as_str(), range);
 
     returned_data_from_bytes
 }
 
-pub fn read_file_as_bytes(file_path: &str, start_of_data_pos: u64,
-                          timepatch: String, range: u32) -> Vec<DataLine> {
+fn read_file_as_bytes(file_path: &str, start_of_data_pos: usize,
+                      timepatch: &str, range: u64) -> Vec<DataLine> {
 
-    let mut f = File::open(file_path).unwrap();
-    let _ = f.seek(SeekFrom::Start(start_of_data_pos));
-    let data = csv::Reader::from_reader(f).has_headers(false);
+    // Open the file and go to start-of-data position
+    let data_including_headers = FileBuffer::open(file_path).unwrap();
+    let data_size: usize = (fs::metadata(file_path).unwrap().len() - start_of_data_pos as u64) as usize;
 
-    let processed_data = match timepatch.as_str() {
-        "32" => timepatch_32(data, range),
-        _ => panic!("Problem!")
-    };
+    // Find the suitable bit order in the file
+    let timepatch_map = create_timepatch_map();
+    let bit_order: &[u8; 4] = timepatch_map.get(timepatch).unwrap();
+    let mut chunk_size: u8 = bit_order.iter().sum();
+    chunk_size = (chunk_size + 4) / 8;
 
+    // Get data
+    let processed_data;
+    if String::from("f3") == timepatch {
+        processed_data = iterate_over_f3(&data_including_headers[start_of_data_pos..], range,
+                                               bit_order, chunk_size as usize, data_size);
+    } else {
+        processed_data = iterate_over_file(&data_including_headers[start_of_data_pos..], range,
+                                               bit_order, chunk_size as usize, data_size);
+    }
     processed_data
 }
 
-fn timepatch_32<R: Read>(mut data: Reader<R>, range: u32) -> Vec<DataLine> {
-    let mut data_processed: Vec<DataLine> = Vec::new();
-    let mut lost: bool;
-    let mut sweep: u32;
+fn create_timepatch_map<'a>() -> HashMap<&'a str, [u8; 4]> {
+
+    let mut timepatch_map = HashMap::new();
+
+    // Array elements: Data lost, TAG bits, Sweep, Time (edge and channel are always 1 and 3)
+    let array_for_32 = [1, 0, 7, 36];
+    timepatch_map.insert("32", array_for_32);
+
+    let array_for_f3 = [1, 16, 7, 36];
+    //let array_for_f3 = [0, 0, 0, 0];
+    timepatch_map.insert("f3", array_for_f3);
+
+    let array_for_5b = [1, 15, 16, 28];
+    timepatch_map.insert("5b", array_for_5b);
+
+    timepatch_map
+}
+
+fn iterate_over_f3(data: &[u8], range: u64, bit_order: &[u8; 4], chunk_size: usize,
+                     data_size: usize) -> Vec<DataLine> {
+    let mut data_processed: Vec<DataLine> = Vec::with_capacity(data_size + 1);
+    let mut lost: u8;
+    let mut tag: u16;
+    let mut sweep: u16;
     let mut time: u64;
     let mut edge: bool;
     let mut channel: u8;
 
-    loop {
-        match data.next_bytes() {
-            csv::NextField::EndOfCsv => break,
-            csv::NextField::EndOfRecord => {},
-            csv::NextField::Error(err) => panic!(err),
-            csv::NextField::Data(row) => {
-                let mut reader = bitreader::BitReader::new(row);
-                lost = reader.read_bool().unwrap();
-                sweep = reader.read_u32(7).unwrap();
-                time = reader.read_u64(36).unwrap() + ((range * sweep - 1) as u64);
-                edge = reader.read_bool().unwrap();
-                channel = reader.read_u8(3).unwrap();
+    println!("chunk_size: {}, data_size: {}, data/chunk: {}", chunk_size, data_size,
+             data_size/chunk_size);
+    println!("Making sure we didn't lose anyone: {}", chunk_size * (data_size/chunk_size));
 
-                data_processed.push(DataLine { channel: channel, edge: edge, sweep: sweep,
-                                               time: time, lost: lost })
-            }
-        }
+    let first_row = &data[0..chunk_size];
+    println!("first row: {:?}", first_row);
+    let second_row = &data[chunk_size..chunk_size*2];
+    println!("second row: {:?}", second_row);
+    let third_row = &data[chunk_size*2..chunk_size*3];
+    println!("third row: {:?}", third_row);
+    let fourth_row = &data[chunk_size*3..chunk_size*4];
+    println!("fourth row: {:?}", fourth_row);
+
+    let mut reader_f = BitReader::new(first_row);
+    let all_bits = reader_f.read_u64(64).unwrap();
+    println!("All bits 1: {:b}", all_bits);
+    let mut reader_f = BitReader::new(second_row);
+    let all_bits = reader_f.read_u64(64).unwrap();
+    println!("All bits 1: {:b}", all_bits);
+    let mut reader_f = BitReader::new(third_row);
+    let all_bits = reader_f.read_u64(64).unwrap();
+    println!("All bits 1: {:b}", all_bits);
+    let mut reader_f = BitReader::new(fourth_row);
+    let all_bits = reader_f.read_u64(64).unwrap();
+    println!("All bits 1: {:b}", all_bits);
+//    let bits_lost = reader_f.read_u64(1).unwrap();
+//    let bits_tag = reader_f.read_u64(15).unwrap();
+//    println!("Bits_lost: {:b}", bits_lost);
+//    println!("Bits_tag: {:b}", bits_tag);
+
+    for cur_data in data.chunks(chunk_size) {
+        let mut reader = BitReader::new(cur_data);
+        tag = reader.read_u16(bit_order[1]).unwrap();
+        lost = reader.read_u8(bit_order[0]).unwrap();
+        sweep = reader.read_u16(bit_order[2]).unwrap();
+        time = reader.read_u64(bit_order[3]).unwrap();
+        edge = reader.read_bool().unwrap();
+        channel = reader.read_u8(3).unwrap();
+
+        time = time  + (range * (sweep as u64)); // TODO: should be -1
+
+        data_processed.push(DataLine { channel: channel, edge: edge, sweep: sweep,
+                                       time: time, tag: tag, lost: lost });
     }
+    data_processed
 
+}
+
+fn iterate_over_file(data: &[u8], range: u64, bit_order: &[u8; 4], chunk_size: usize,
+                     data_size: usize) -> Vec<DataLine> {
+    let mut data_processed: Vec<DataLine> = Vec::with_capacity(data_size + 1);
+    let mut lost: u8;
+    let mut tag: u16;
+    let mut sweep: u16;
+    let mut time: u64;
+    let mut edge: bool;
+    let mut channel: u8;
+
+    println!("chunk_size: {}, data_size: {}, data/chunk: {}", chunk_size, data_size,
+             data_size/chunk_size);
+    println!("Making sure we didn't lose anyone: {}", chunk_size * (data_size/chunk_size));
+    let first_row = &data[0..chunk_size];
+    println!("first row: {:?}", first_row);
+    let second_row = &data[chunk_size..chunk_size*2];
+    println!("second row: {:?}", second_row);
+    let third_row = &data[chunk_size*2..chunk_size*3];
+    println!("third row: {:?}", third_row);
+    let fourth_row = &data[chunk_size*3..chunk_size*4];
+    println!("fourth row: {:?}", fourth_row);
+
+    let mut reader_f = BitReader::new(first_row);
+    let all_bits = reader_f.read_u64(64).unwrap();
+    println!("All bits 1: {:b}", all_bits);
+    let mut reader_f = BitReader::new(second_row);
+    let all_bits = reader_f.read_u64(64).unwrap();
+    println!("All bits 1: {:b}", all_bits);
+    let mut reader_f = BitReader::new(third_row);
+    let all_bits = reader_f.read_u64(64).unwrap();
+    println!("All bits 1: {:b}", all_bits);
+    let mut reader_f = BitReader::new(fourth_row);
+    let all_bits = reader_f.read_u64(64).unwrap();
+    println!("All bits 1: {:b}", all_bits);
+//    let bits_lost = reader_f.read_u64(1).unwrap();
+//    let bits_tag = reader_f.read_u64(15).unwrap();
+//    println!("Bits_lost: {:b}", bits_lost);
+//    println!("Bits_tag: {:b}", bits_tag);
+
+    for cur_data in data.chunks(chunk_size) {
+        let mut reader = BitReader::new(cur_data);
+        lost = reader.read_u8(bit_order[0]).unwrap();
+        tag = reader.read_u16(bit_order[1]).unwrap();
+        sweep = reader.read_u16(bit_order[2]).unwrap();
+        time = reader.read_u64(bit_order[3]).unwrap();
+        edge = reader.read_bool().unwrap();
+        channel = reader.read_u8(3).unwrap();
+
+        time = time  + (range * (sweep as u64)); // TODO: should be -1
+
+        data_processed.push(DataLine { channel: channel, edge: edge, sweep: sweep,
+                                       time: time, tag: tag, lost: lost });
+    }
     data_processed
 }
+
+//    loop {
+//        match data.next_bytes() {
+//            csv::NextField::EndOfCsv => break,
+//            csv::NextField::EndOfRecord => {},
+//            csv::NextField::Error(err) => panic!(err),
+//            csv::NextField::Data(row) => {
+//                let mut reader = bitreader::BitReader::new(row);
+//                //channel = reader.read_u8(3).unwrap();
+//                channel = 1;
+//                println!("row: {:?}", row);
+//                edge = reader.read_bool().unwrap();
+//                time = reader.read_u64(bit_order[3]).unwrap();
+//                lost = reader.read_u8(bit_order[0]).unwrap();
+//                sweep = reader.read_u16(bit_order[2]).unwrap();
+//                tag = reader.read_u16(bit_order[1]).unwrap();
+//                time = time  + (range * (sweep as u64)); // TODO: should be -1
+//
+//                data_processed.push(DataLine { channel: channel, edge: edge, sweep: sweep,
+//                                               time: time, tag: tag, lost: lost })
+//            }
+//        }
+//    }
+
 //pub fn read_file_as_str() -> Vec<DataLine> {
 //    // Read the filename as an ASCII file
 //

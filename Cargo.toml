@@ -7,4 +7,5 @@ authors = ["Hagai Hargil <hagaihargil@gmail.com>"]
 [dependencies]
 
 bitreader = "0.3.0"
-csv = "0.15.0"
+rayon = "0.7.0"
+filebuffer = "0.1.1"
