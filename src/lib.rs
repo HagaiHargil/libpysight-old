@@ -1,3 +1,4 @@
+#![feature(rust_2018_preview, uniform_paths)]
 extern crate bitreader;
 extern crate libc;
 #[macro_use] extern crate failure;

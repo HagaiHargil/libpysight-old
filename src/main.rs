@@ -1,3 +1,4 @@
+#![feature(rust_2018_preview, uniform_paths)]
 extern crate rread_lst;
 extern crate filebuffer;
 extern crate data_encoding;
