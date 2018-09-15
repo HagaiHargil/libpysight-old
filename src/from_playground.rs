@@ -103,8 +103,8 @@ pub fn par_main() {
             let ch = (line & 0b111) as u8;
             let time = line & 0b11110000;
             let dl = DataLine::new(0, 0, false, 0, time.into());
-            ch_struct.index_mut(ch).unwrap()
-                .lock()
+            let cur_vec = ch_struct[ch].as_mut().unwrap();
+            cur_vec.lock()
                 .expect("Mutex lock error")
                 .push(dl);
         }).collect();

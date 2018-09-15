@@ -76,7 +76,7 @@ pub extern "C" fn read_lst(file_path_py: *const c_char, start_of_data_pos: uint6
 #[no_mangle]
 #[cfg(test)]
 pub extern fn do_tuple_stuff(file_path_py: *const c_char, start_of_data_pos: uint64_t,
-                             range: uint64_t, timepatch_py: *const c_char) -> Tuple {
+                             range: uint64_t, timepatch_py: *const c_char) -> DataPerChannel {
     let file_path_unsafe = unsafe {
         assert!(!file_path_py.is_null());
         CStr::from_ptr(file_path_py)
@@ -94,7 +94,7 @@ pub extern fn do_tuple_stuff(file_path_py: *const c_char, start_of_data_pos: uin
                                         range as u64, String::from(timepatch),
                                         vec![0, 0, 0, 0, 0, 1]);
 
-   let mut data = (vec![1, 2, 3], vec!['a', 'b', 'c'], vec!["1", "2", "3"]);
+   let mut data = (vec![1, 2, 3], vec![4, 5, 6], vec![7, 8, 9]);
     let p0 = data.0.as_mut_ptr();
     let len0 = data.0.len() as u64;
     let p1 = data.1.as_mut_ptr();
