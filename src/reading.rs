@@ -1,11 +1,12 @@
 use std::fs;
-// use rayon::prelude::*;
+use rayon::prelude::*;
 use std::collections::HashMap;
 use std::str;
 use filebuffer::FileBuffer;
 use bitreader::BitReader;
 use failure::Error;
 use data_encoding::HEXLOWER;
+
 
 /// The basic struct with all of the information
 /// contained in a single "line" of an .lst file
@@ -31,7 +32,7 @@ fn create_channel_map(data_size: usize, active_channels: Vec<u8>) -> HashMap<u8,
     let mut channel_map = HashMap::new();
 
     let vec = Vec::with_capacity(data_size + 1);
-//            vec.set_len(data_size + 1);
+
     for (idx, is_active) in active_channels.iter().enumerate() {
         if is_active == &1u8 {
             channel_map.insert((idx + 1) as u8, vec.clone());
@@ -108,49 +109,6 @@ impl TimepatchBits {
     }
 }
 
-// pub fn old_main(file_path: String, start_of_data_pos: usize,
-//                 range: u64, timepatch: String) -> (Vec<u64>, Vec<u64>, Vec<u64>) {
-//     let data_including_headers = FileBuffer::open(file_path.clone()).expect("File not found.");
-//     println!("File opened successfully.");
-//     let data_size: usize = (fs::metadata(file_path).expect("File not found.")
-//                                                    .len() - start_of_data_pos as u64)
-//                                                    as usize;
-
-//     // Find the suitable bit order in the file
-//     let timepatch_map = create_timepatch_map();
-//     let bit_order: &[u8; 4] = timepatch_map.get(timepatch.as_str()).unwrap();
-//     let mut chunk_size: u8 = bit_order.iter().sum();
-//     chunk_size = (chunk_size + 4) / 8;
-
-//     // Get data
-//     let processed_data;
-//     if String::from("f3") == timepatch {
-//         processed_data = iterate_over_f3(&data_including_headers[start_of_data_pos..], range,
-//                                          bit_order, chunk_size as usize, data_size);
-//     } else {
-//         processed_data = iterate_over_file(&data_including_headers[start_of_data_pos..], range,
-//                                            bit_order, chunk_size as usize, data_size);
-//     }
-
-//     processed_data
-// }
-
-fn create_timepatch_map<'a>() -> HashMap<&'a str, [u8; 4]> {
-
-    let mut timepatch_map = HashMap::new();
-
-    // Array elements: Data lost, TAG bits, Sweep, Time (edge and channel are always 1 and 3)
-    let array_for_32 = [1, 0, 7, 36];
-    timepatch_map.insert("32", array_for_32);
-
-    let array_for_f3 = [1, 16, 7, 36];
-    timepatch_map.insert("f3", array_for_f3);
-
-    let array_for_5b = [1, 15, 16, 28];
-    timepatch_map.insert("5b", array_for_5b);
-
-    timepatch_map
-}
 
 /// Parse data in file if timepatch == "f3"
 fn parse_f3(data: &[u8], range: u64, bit_order: &[u8; 4],
@@ -162,10 +120,10 @@ fn parse_f3(data: &[u8], range: u64, bit_order: &[u8; 4],
     let mut edge: bool;
     let mut chan: u8;
 
-    let mut chunk_size: u8 = bit_order.iter().sum();
-    chunk_size = (chunk_size  + 4u8) / 8u8;
-    let mut reversed_vec = Vec::with_capacity(chunk_size as usize + 1);
-    for cur_data in data.chunks(chunk_size as usize) {
+    let mut chunk_size: usize = bit_order.iter().sum::<u8>() as usize;
+    chunk_size = (chunk_size  + 4usize) / 8usize;
+    let mut reversed_vec = Vec::with_capacity(chunk_size + 1usize);
+    for cur_data in data.chunks(chunk_size) {
         reversed_vec.truncate(0);
         reversed_vec.extend(cur_data.iter().rev());
         let mut reader = BitReader::new(&reversed_vec);
@@ -180,8 +138,8 @@ fn parse_f3(data: &[u8], range: u64, bit_order: &[u8; 4],
 
         // Populate a hashmap, each key being an input channel and the values are a vector
         // of DataLines
-        map_of_data.get_mut(&chan).unwrap().push(DataLine::new(lost, tag, edge, sweep, time));
-    }
+        // map_of_data.get_mut(&chan).unwrap().push(DataLine::new(lost, tag, edge, sweep, time));
+        };
     Ok(map_of_data)
 }
 
@@ -195,25 +153,28 @@ fn parse_with_sweep(data: &[u8], range: u64, bit_order: &[u8; 4],
     let mut edge: bool;
     let mut chan: u8;
 
-    let mut chunk_size: u8 = bit_order.iter().sum();
-    chunk_size = (chunk_size  + 4u8) / 8u8;
-    let mut reversed_vec = Vec::with_capacity(chunk_size as usize + 1);
-        for cur_data in data.chunks(chunk_size as usize) {
-            reversed_vec.truncate(0);
-            reversed_vec.extend(cur_data.iter().rev());
-            let mut reader = BitReader::new(&reversed_vec);
-            lost = reader.read_u8(bit_order[0]).expect("lost read problem.");
-            tag = reader.read_u16(bit_order[1]).expect("tag read problem.");
-            sweep = reader.read_u16(bit_order[2]).expect("sweep read problem.");
-            time = reader.read_u64(bit_order[3]).expect("time read problem.");
-            edge = reader.read_bool().expect("edge read problem.");
-            chan = reader.read_u8(3).expect("channel read problem.");
+    let mut chunk_size: usize = bit_order.iter().sum::<u8>() as usize;
+    chunk_size = (chunk_size  + 4usize) / 8usize;
+    let mut reversed_vec = Vec::with_capacity(chunk_size + 1usize);
+    for cur_data in data.chunks(chunk_size) {
+        println!("Baseline: {:?}", cur_data);
+        reversed_vec.truncate(0);
+        reversed_vec.extend(cur_data.iter().rev());
+        println!("Reversed: {:?}", reversed_vec);
+        let mut reader = BitReader::new(&reversed_vec);
+        lost = reader.read_u8(bit_order[0]).expect("lost read problem.");
+        tag = reader.read_u16(bit_order[1]).expect("tag read problem.");
+        sweep = reader.read_u16(bit_order[2]).expect("sweep read problem.");
+        time = reader.read_u64(bit_order[3]).expect("time read problem.");
+        edge = reader.read_bool().expect("edge read problem.");
+        chan = reader.read_u8(3).expect("channel read problem.");
 
-            time += range * (u64::from(sweep - 1));
-            // Populate a hashmap, each key being an input channel and the values are a vector
-            // of DataLines
-            map_of_data.get_mut(&chan).unwrap().push(DataLine::new(lost, tag, edge, sweep, time));
-        }
+        time += range * (u64::from(sweep - 1));
+        println!("Time: {:?}", time);
+        // Populate a hashmap, each key being an input channel and the values are a vector
+        // of DataLines
+        map_of_data.get_mut(&chan).unwrap().push(DataLine::new(lost, tag, edge, sweep, time));
+    }
 
     Ok(map_of_data)
 }
@@ -229,10 +190,10 @@ fn parse_no_sweep(data: &[u8], _range: u64, bit_order: &[u8; 4],
     let mut chan: u8;
 
 
-    let mut chunk_size: u8 = bit_order.iter().sum();
-    chunk_size = (chunk_size  + 4u8) / 8u8;
-    let mut reversed_vec = Vec::with_capacity(chunk_size as usize + 1);
-        for cur_data in data.chunks(chunk_size as usize) {
+    let mut chunk_size: usize = bit_order.iter().sum::<u8>() as usize;
+    chunk_size = (chunk_size  + 4usize) / 8usize;
+    let mut reversed_vec = Vec::with_capacity(chunk_size + 1usize);
+        for cur_data in data.chunks(chunk_size) {
             reversed_vec.truncate(0);
             reversed_vec.extend(cur_data.iter().rev());
             // reversed_vec.extend(cur_data.iter());
@@ -269,67 +230,21 @@ pub fn analyze_lst(fname: &str, start_of_data: usize, range: u64,
     let chan_map = create_channel_map(data_size, channel_map);
     let tp_enum = Timepatch::new(timepatch);
     let processed_data = match tp_enum {
-        Timepatch::Tp0(func) => func(data, range, &TimepatchBits::new(timepatch),chan_map),
-        Timepatch::Tp5(func) => func(data, range, &TimepatchBits::new(timepatch),chan_map),
-        Timepatch::Tp1(func) => func(data, range, &TimepatchBits::new(timepatch),chan_map),
-        Timepatch::Tp1a(func) => func(data, range,&TimepatchBits::new(timepatch), chan_map),
-        Timepatch::Tp2a(func) => func(data, range,&TimepatchBits::new(timepatch), chan_map),
-        Timepatch::Tp22(func) => func(data, range,&TimepatchBits::new(timepatch), chan_map),
-        Timepatch::Tp32(func) => func(data, range,&TimepatchBits::new(timepatch), chan_map),
-        Timepatch::Tp2(func) => func(data, range, &TimepatchBits::new(timepatch),chan_map),
-        Timepatch::Tp5b(func) => func(data, range,&TimepatchBits::new(timepatch), chan_map),
-        Timepatch::TpDb(func) => func(data, range,&TimepatchBits::new(timepatch), chan_map),
-        Timepatch::Tpf3(func) => func(data, range,&TimepatchBits::new(timepatch), chan_map),
-        Timepatch::Tp43(func) => func(data, range,&TimepatchBits::new(timepatch), chan_map),
-        Timepatch::Tpc3(func) => func(data, range,&TimepatchBits::new(timepatch), chan_map),
-        Timepatch::Tp3(func) => func(data, range, &TimepatchBits::new(timepatch),chan_map),
+        Timepatch::Tp0(func) => func(data, range, &TimepatchBits::new(timepatch), chan_map),
+        Timepatch::Tp5(func) => func(data, range, &TimepatchBits::new(timepatch), chan_map),
+        Timepatch::Tp1(func) => func(data, range, &TimepatchBits::new(timepatch), chan_map),
+        Timepatch::Tp1a(func) => func(data, range, &TimepatchBits::new(timepatch), chan_map),
+        Timepatch::Tp2a(func) => func(data, range, &TimepatchBits::new(timepatch), chan_map),
+        Timepatch::Tp22(func) => func(data, range, &TimepatchBits::new(timepatch), chan_map),
+        Timepatch::Tp32(func) => func(data, range, &TimepatchBits::new(timepatch), chan_map),
+        Timepatch::Tp2(func) => func(data, range, &TimepatchBits::new(timepatch), chan_map),
+        Timepatch::Tp5b(func) => func(data, range, &TimepatchBits::new(timepatch), chan_map),
+        Timepatch::TpDb(func) => func(data, range, &TimepatchBits::new(timepatch), chan_map),
+        Timepatch::Tpf3(func) => func(data, range, &TimepatchBits::new(timepatch), chan_map),
+        Timepatch::Tp43(func) => func(data, range, &TimepatchBits::new(timepatch), chan_map),
+        Timepatch::Tpc3(func) => func(data, range, &TimepatchBits::new(timepatch), chan_map),
+        Timepatch::Tp3(func) => func(data, range, &TimepatchBits::new(timepatch), chan_map),
     };
     processed_data
 
-}
-
-#[cfg(test)]
-fn iterate_over_file(data: &[u8], range: u64, bit_order: &[u8; 4], chunk_size: usize,
-                     data_size: usize) -> (Vec<u64>, Vec<u64>, Vec<u64>) {
-
-    let mut lost: u8;
-    let mut tag: u16;
-    let mut sweep: u16;
-    let mut time: u64;
-    let mut edge: bool;
-    let mut reversed_vec = Vec::with_capacity(chunk_size + 1);
-    let mut result_vec = Vec::with_capacity(8);
-    let mut map_of_data = create_channel_map(data_size);
-
-    for (idx, cur_data) in data.chunks(chunk_size).enumerate() {
-        reversed_vec.truncate(0);
-        reversed_vec.extend(cur_data.iter().rev());
-        let mut reader = BitReader::new(&reversed_vec);
-        lost = reader.read_u8(bit_order[0]).expect("lost read problem.");
-        tag = reader.read_u16(bit_order[1]).expect("tag read problem.");
-        sweep = reader.read_u16(bit_order[2]).expect("sweep read problem.");
-        time = reader.read_u64(bit_order[3]).expect("time read problem.");
-        edge = reader.read_bool().expect("edge read problem.");
-        time += (range * ((sweep - 1) as u64));
-
-        // Populate a hashmap, each key being an input channel and the values are a vector
-        // of DataLines
-//        map_of_data.get_mut(&reader.read_u8(3).expect("channel read problem."))
-//                   .expect("`get_mut` didn't find a key.")
-//                   [idx] = DataLine { edge, sweep, time, tag, lost };
-        map_of_data.get_mut(&reader.read_u8(3).expect("channel read problem."))
-                   .expect("`get_mut` didn't find a key.")
-                   [idx] = time;
-    }
-
-    println!("single value: {:?}", map_of_data[&1u8][1]);
-    let indices = vec![1u8, 2u8, 6u8];
-    println!("About to create the result_vec");
-    for idx in indices {
-        result_vec.push(map_of_data.remove(&idx)
-                                   .expect("Didn't find a suitable entry in `map_of_data`."));
-        println!("{}", idx);
-    }
-    println!("result_vec len: {:?}", result_vec.len());
-    (result_vec.remove(2), result_vec.remove(1), result_vec.remove(0))
 }

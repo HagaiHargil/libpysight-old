@@ -3,6 +3,7 @@ extern crate filebuffer;
 extern crate data_encoding;
 
 use rread_lst::reading::analyze_lst;
+use rread_lst::from_playground::par_main;
 use std::collections::HashMap;
 use std::str;
 use filebuffer::FileBuffer;
@@ -20,8 +21,9 @@ fn main() {
     let range = 512u64;
     let timepatch = "5";
     let channel_map = vec![0, 0, 0, 0, 0, 1];
-    let res = analyze_lst(fname, start_of_data, range, timepatch, channel_map).unwrap();
-    println!("{:?}", res[&6]);
-//    println!("{:?}", res[&0]);
+    // let res = analyze_lst(fname, start_of_data, range, timepatch, channel_map).unwrap();
+    // println!("{:?}", res[&6]);
+    // println!("{:?}", res[&0]);
+    par_main();
 
 }

@@ -4,11 +4,13 @@ extern crate libc;
 #[macro_use] extern crate failure_derive;
 extern crate filebuffer;
 extern crate data_encoding;
+extern crate rayon;
+extern crate byteorder;
 
 pub mod reading;
+pub mod from_playground;
+
 use reading::{analyze_lst, DataLine};
-
-
 use libc::{uint64_t, c_char, c_void, size_t};
 use std::ffi::CStr;
 use std::{mem, slice};
