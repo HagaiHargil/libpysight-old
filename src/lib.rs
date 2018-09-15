@@ -1,12 +1,12 @@
 #![feature(rust_2018_preview, uniform_paths)]
-extern crate bitreader;
-extern crate libc;
+
+use libc;
 #[macro_use] extern crate failure;
 #[macro_use] extern crate failure_derive;
-extern crate filebuffer;
-extern crate data_encoding;
-extern crate rayon;
-extern crate byteorder;
+
+
+
+
 
 pub mod reading;
 pub mod from_playground;

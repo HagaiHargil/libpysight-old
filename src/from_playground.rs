@@ -1,4 +1,4 @@
-extern crate rayon; // 1.0.2
+use rayon; // 1.0.2
 
 use std::sync::{Arc, Mutex};
 use std::ops::{Index, IndexMut};
@@ -92,7 +92,7 @@ fn create_channel_struct(data_size: usize, active_channels: Vec<u8>) -> InputCha
 
 pub fn par_main() {}
 #[cfg(test)]
-pub fn par_main() {
+pub fn par_main_t() {
     let data: [u8; 12] = [246, 0, 0, 1, 246, 1, 0, 1, 230, 2, 0, 1];
     let mut ch_struct = create_channel_struct(10usize, vec![0, 0, 0, 0, 0, 1]);
     let res: Vec<_> = data
