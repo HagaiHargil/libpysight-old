@@ -90,8 +90,8 @@ pub extern fn do_tuple_stuff(file_path_py: *const c_char, start_of_data_pos: uin
     let timepatch = timepatch_unsafe.to_str().unwrap();
 
     println!("{}, {}, {}", file_path, timepatch, range);
-    let mut data = reading::analyze_lst(String::from(file_path), start_of_data_pos as usize,
-                                        range as u64, String::from(timepatch),
+    let mut data = reading::analyze_lst(file_path, start_of_data_pos as usize,
+                                        range as u64, timepatch,
                                         vec![0, 0, 0, 0, 0, 1]);
 
    let mut data = (vec![1, 2, 3], vec![4, 5, 6], vec![7, 8, 9]);
