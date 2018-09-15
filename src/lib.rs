@@ -11,7 +11,7 @@ extern crate byteorder;
 pub mod reading;
 pub mod from_playground;
 
-use reading::{analyze_lst, DataLine};
+use crate::reading::{analyze_lst, DataLine};
 use libc::{uint64_t, c_char, c_void, size_t};
 use std::ffi::CStr;
 use std::{mem, slice};
@@ -50,7 +50,7 @@ impl VecSlice {
 /// Convert the input from Python into Rust data structures and call the main function
 /// that reads and analyzes the `.lst` file
 #[no_mangle]
-pub extern "C" fn read_lst(file_path_py: *const c_char, start_of_data_pos: uint64_t,
+pub extern "C" fn read_lst(file_path_py: *const c_char, _start_of_data_pos: uint64_t,
                            range: uint64_t, timepatch_py: *const c_char) {
     
     let file_path_unsafe = unsafe {
@@ -90,7 +90,7 @@ pub extern fn do_tuple_stuff(file_path_py: *const c_char, start_of_data_pos: uin
     let timepatch = timepatch_unsafe.to_str().unwrap();
 
     println!("{}, {}, {}", file_path, timepatch, range);
-    let mut data = reading::analyze_lst(file_path, start_of_data_pos as usize,
+    let _data = reading::analyze_lst(file_path, start_of_data_pos as usize,
                                         range as u64, timepatch,
                                         vec![0, 0, 0, 0, 0, 1]);
 

@@ -112,7 +112,7 @@ impl TimepatchBits {
 
 /// Parse data in file if timepatch == "f3"
 fn parse_f3(data: &[u8], range: u64, bit_order: &[u8; 4],
-            mut map_of_data: HashMap<u8, Vec<DataLine>>) -> Result<HashMap<u8, Vec<DataLine>>, Error> {
+            map_of_data: HashMap<u8, Vec<DataLine>>) -> Result<HashMap<u8, Vec<DataLine>>, Error> {
     let mut lost: u8;
     let mut tag: u16;
     let mut sweep: u16;

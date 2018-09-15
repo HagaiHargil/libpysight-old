@@ -18,10 +18,10 @@ fn main() {
     starts_map.insert("power_40p7_512unidir_gain900_thresh18mv_start_pmt1_stop1_lines_calcium_002.lst",
                       1554usize);
     let fname = "4-byte006.lst";
-    let start_of_data = starts_map[fname];
-    let range = 512u64;
-    let timepatch = "5";
-    let channel_map = vec![0, 0, 0, 0, 0, 1];
+    let _start_of_data = starts_map[fname];
+    let _range = 512u64;
+    let _timepatch = "5";
+    let _channel_map = vec![0, 0, 0, 0, 0, 1];
     // let res = analyze_lst(fname, start_of_data, range, timepatch, channel_map).unwrap();
     // println!("{:?}", res[&6]);
     // println!("{:?}", res[&0]);
