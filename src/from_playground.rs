@@ -90,24 +90,26 @@ fn create_channel_struct(data_size: usize, active_channels: Vec<u8>) -> InputCha
                        chans.remove(0), chans.remove(0), chans.remove(0))
 }
 
-
 pub fn par_main() {
-    let data: [u8; 12] = [246, 0, 0, 1, 246, 1, 0, 1, 230, 2, 0, 1];
-    let mut ch_struct = create_channel_struct(10usize, vec![0, 0, 0, 0, 0, 1]);
-    let res: Vec<_> = data
-        .par_chunks(4)
-        .filter_map(|mut line| if line != [0u8; 4] { 
-            line.read_u32::<LE>().ok()
-            } else { None })
-        .map(|mut line| {
-            let ch = (line & 0b111) as u8;
-            let time = line & 0b11110000;
-            let dl = DataLine::new(0, 0, false, 0, time.into());
-            let mut cur_vec = ch_struct[ch].as_mut().unwrap();
-            cur_vec.lock()
-                .expect("Mutex lock error")
-                .push(dl);
-        }).collect();
-    println!("And finally: {:?}", ch_struct);
     
 }
+// pub fn par_main() {
+//     let data: [u8; 12] = [246, 0, 0, 1, 246, 1, 0, 1, 230, 2, 0, 1];
+//     let mut ch_struct = create_channel_struct(10usize, vec![0, 0, 0, 0, 0, 1]);
+//     let res: Vec<_> = data
+//         .par_chunks(4)
+//         .filter_map(|mut line| if line != [0u8; 4] { 
+//             line.read_u32::<LE>().ok()
+//             } else { None })
+//         .map(|mut line| {
+//             let ch = (line & 0b111) as u8;
+//             let time = line & 0b11110000;
+//             let dl = DataLine::new(0, 0, false, 0, time.into());
+//             let mut cur_vec = ch_struct[ch].as_mut().unwrap();
+//             cur_vec.lock()
+//                 .expect("Mutex lock error")
+//                 .push(dl);
+//         }).collect();
+//     println!("And finally: {:?}", ch_struct);
+    
+// }
