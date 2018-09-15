@@ -91,7 +91,8 @@ pub extern fn do_tuple_stuff(file_path_py: *const c_char, start_of_data_pos: uin
 
     println!("{}, {}, {}", file_path, timepatch, range);
     let mut data = reading::analyze_lst(String::from(file_path), start_of_data_pos as usize,
-                                        range as u64, String::from(timepatch));
+                                        range as u64, String::from(timepatch),
+                                        vec![0, 0, 0, 0, 0, 1]);
 
    let mut data = (vec![1, 2, 3], vec!['a', 'b', 'c'], vec!["1", "2", "3"]);
     let p0 = data.0.as_mut_ptr();
@@ -106,9 +107,12 @@ pub extern fn do_tuple_stuff(file_path_py: *const c_char, start_of_data_pos: uin
         mem::forget(data);
     }
 
-    let s0 = VecSlice { ptr: p0, len: len0 };
-    let s1 = VecSlice { ptr: p1, len: len1 };
-    let s2 = VecSlice { ptr: p2, len: len2 };
+    let s1 = VecSlice { ptr: p0, len: len0 };
+    let s2 = VecSlice { ptr: p1, len: len1 };
+    let s3 = VecSlice { ptr: p2, len: len2 };
+    let s4 = VecSlice { ptr: p2, len: len2 };
+    let s5 = VecSlice { ptr: p2, len: len2 };
+    let s6 = VecSlice { ptr: p2, len: len2 };
     DataPerChannel::new(s1, s2, s3, s4, s5, s6)
 }
 
