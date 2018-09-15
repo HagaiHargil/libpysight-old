@@ -90,6 +90,8 @@ fn create_channel_struct(data_size: usize, active_channels: Vec<u8>) -> InputCha
                        chans.remove(0), chans.remove(0), chans.remove(0))
 }
 
+pub fn par_main() {}
+#[cfg(test)]
 pub fn par_main() {
     let data: [u8; 12] = [246, 0, 0, 1, 246, 1, 0, 1, 230, 2, 0, 1];
     let mut ch_struct = create_channel_struct(10usize, vec![0, 0, 0, 0, 0, 1]);
