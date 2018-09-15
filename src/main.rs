@@ -1,7 +1,7 @@
 #![feature(rust_2018_preview, uniform_paths)]
-extern crate rread_lst;
-extern crate filebuffer;
-extern crate data_encoding;
+use rread_lst;
+use filebuffer;
+use data_encoding;
 
 use rread_lst::reading::analyze_lst;
 use rread_lst::from_playground::par_main;
