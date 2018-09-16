@@ -50,6 +50,20 @@ fn create_channel_vec(data_size: usize, active_channels: Vec<u8>) -> Vec<Mutex<V
     chans
 }
 
+fn create_channel_vec_seq(data_size: usize, active_channels: Vec<u8>) -> Vec<Vec<DataLine>> {
+    let vec_with_data = Vec::with_capacity(data_size + 1);
+    let vec_empty_chan = Vec::with_capacity(0);
+    let mut chans = Vec::with_capacity(NUM_OF_INPUT_CHANNELS);
+    for is_active in active_channels.iter() {
+        if is_active == &1u8 {
+            chans.push(vec_with_data.clone());
+        } else {
+            chans.push(vec_empty_chan.clone());
+        };
+    };
+    chans
+}
+
 /// Return type of our main function
 type LstReturn = fn(&[u8], u64, &[u8; 4], Vec<Mutex<Vec<DataLine>>>)
         -> Result<Vec<Mutex<Vec<DataLine>>>, Error>;
@@ -86,7 +100,7 @@ impl Timepatch {
             // "5b" => Timepatch::Tp5b(par_parse_with_sweep),
             // "Db" => Timepatch::TpDb(par_parse_with_sweep),
             // "f3" => Timepatch::Tpf3(parse_f3),
-            // "43" => Timepatch::Tp43(parse_no_sweep),
+            "43" => Timepatch::Tp43(par_parse_no_sweep_8bytes),
             // "c3" => Timepatch::Tpc3(parse_no_sweep),
             // "3" => Timepatch::Tp3(parse_no_sweep),
             _ => panic!("Invalid timepatch value: {}", tp),
@@ -207,41 +221,42 @@ fn parse_f3(data: &[u8], range: u64, bit_order: &[u8; 4],
     Ok(map_of_data)
 }
 
-// /// Parse list files with a sweep counter
-// fn parse_with_sweep(data: &[u8], range: u64, bit_order: &[u8; 4],
-//                     mut map_of_data: HashMap<u8, Vec<DataLine>>) -> Result<HashMap<u8, Vec<DataLine>>, Error> {
-//     let mut lost: u8;
-//     let mut tag: u16;
-//     let mut sweep: u16;
-//     let mut time: u64;
-//     let mut edge: bool;
-//     let mut chan: u8;
+/// Parse list files with a sweep counter
+fn parse_with_sweep(data: &[u8], range: u64, bit_order: &[u8; 4],
+                    mut map_of_data: Vec<Vec<DataLine>>) -> Result<Vec<Vec<DataLine>>, Error> {
+    let mut lost: bool;
+    let mut tag: u16;
+    let mut sweep: u16;
+    let mut time: u64;
+    let mut edge: bool;
+    let mut chan: u8;
 
-//     let mut chunk_size: usize = bit_order.iter().sum::<u8>() as usize;
-//     chunk_size = (chunk_size  + 4usize) / 8usize;
-//     let mut reversed_vec = Vec::with_capacity(chunk_size + 1usize);
-//     for cur_data in data.chunks(chunk_size) {
-//         println!("Baseline: {:?}", cur_data);
-//         reversed_vec.truncate(0);
-//         reversed_vec.extend(cur_data.iter().rev());
-//         println!("Reversed: {:?}", reversed_vec);
-//         let mut reader = BitReader::new(&reversed_vec);
-//         lost = reader.read_u8(bit_order[0]).expect("lost read problem.");
-//         tag = reader.read_u16(bit_order[1]).expect("tag read problem.");
-//         sweep = reader.read_u16(bit_order[2]).expect("sweep read problem.");
-//         time = reader.read_u64(bit_order[3]).expect("time read problem.");
-//         edge = reader.read_bool().expect("edge read problem.");
-//         chan = reader.read_u8(3).expect("channel read problem.");
+    let mut chunk_size: usize = bit_order.iter().sum::<u8>() as usize;
+    chunk_size = (chunk_size  + 4usize) / 8usize;
+    let mut reversed_vec = Vec::with_capacity(chunk_size + 1usize);
+    for cur_data in data.chunks(chunk_size) {
+        println!("Baseline: {:?}", cur_data);
+        reversed_vec.truncate(0);
+        reversed_vec.extend(cur_data.iter().rev());
+        println!("Reversed: {:?}", reversed_vec);
+        let mut reader = BitReader::new(&reversed_vec);
+        lost = reader.read_u8(bit_order[0]).expect("lost read problem.") == 1;
+        tag = reader.read_u16(bit_order[1]).expect("tag read problem.");
+        sweep = reader.read_u16(bit_order[2]).expect("sweep read problem.");
+        time = reader.read_u64(bit_order[3]).expect("time read problem.");
+        edge = reader.read_bool().expect("edge read problem.");
+        chan = reader.read_u8(3).expect("channel read problem.");
 
-//         time += range * (u64::from(sweep - 1));
-//         println!("Time: {:?}", time);
-//         // Populate a hashmap, each key being an input channel and the values are a vector
-//         // of DataLines
-//         map_of_data.get_mut(&chan).unwrap().push(DataLine::new(lost, tag, edge, sweep, time));
-//     }
+        time += range * (u64::from(sweep - 1));
+        println!("Time: {:?}", time);
+        // Populate a hashmap, each key being an input channel and the values are a vector
+        // of DataLines
+        // map_of_data.get_mut(&chan).unwrap().push(DataLine::new(lost, tag, edge, time));
+        map_of_data[(chan - 1) as usize].push(DataLine::new(lost, tag, edge, time));
+    }
 
-//     Ok(map_of_data)
-// }
+    Ok(map_of_data)
+}
 
 // /// Parse list files without a sweep counter
 // fn parse_no_sweep(data: &[u8], _range: u64, bit_order: &[u8; 4],
@@ -355,7 +370,7 @@ fn par_parse_no_sweep_2bytes(data: &[u8], range: u64, bit_order: &[u8; 4],
     Ok(parsed_data)
 }
 
-/// Parse a list file for time patch "0"
+/// Parse a list file for time patch "5"
 fn par_parse_with_sweep_4bytes(data: &[u8], range: u64, bit_order: &[u8; 4],
                                mut parsed_data: Vec<Mutex<Vec<DataLine>>>) 
     -> Result<Vec<Mutex<Vec<DataLine>>>, Error> {
@@ -388,11 +403,99 @@ fn par_parse_with_sweep_4bytes(data: &[u8], range: u64, bit_order: &[u8; 4],
     Ok(parsed_data)
 }
 
+
+/// Parse a list file for time patch "5"
+fn parse_with_sweep_4bytes(data: &[u8], range: u64, bit_order: &[u8; 4],
+                           mut parsed_data: Vec<Vec<DataLine>>) 
+    -> Result<Vec<Vec<DataLine>>, Error> {
+    let num_of_bytes_per_line = ((bit_order.iter().sum::<u8>() + 4) / 8) as usize;
+    let bitmap = to_bits_u32(bit_order);
+    let res: Vec<_> = data
+        .chunks(4)
+        .filter_map(|mut line| if line != [0u8; 4] { 
+            line.read_u32::<LE>().ok()
+            } else { None })
+        .map(|mut line| {
+            let ch = ((line & 0b111) - 1) as usize;
+            line = line >> 3;  // throw away "channel" bits
+            let edge = (line & 0b1) == 1;
+            line = line >> 1;  // throw away "edge" bit
+            let mut time: u64 = (line & bitmap[3]) as u64;
+            line = line >> bit_order[3]; // throw away "time" bits
+            let sweep: u16 = (line & bitmap[2]) as u16;
+            time += range * (u64::from(sweep - 1));
+            line = line >> bit_order[2]; // throw away "sweep" bits
+            let tag: u16 = (line & bitmap[1]) as u16;
+            line = line >> bit_order[1]; // throw away "tag" bits
+            let lost: bool = (line & bitmap[0]) == 1;
+            let dl = DataLine::new(lost, tag, edge, time);
+            parsed_data[ch].push(dl);
+        }).collect();
+    Ok(parsed_data)
+}
+
+/// Parse a list file for time patch "43"
+fn par_parse_no_sweep_8bytes(data: &[u8], range: u64, bit_order: &[u8; 4],
+                             mut parsed_data: Vec<Mutex<Vec<DataLine>>>) 
+    -> Result<Vec<Mutex<Vec<DataLine>>>, Error> {
+    let bitmap = to_bits_u64(bit_order);
+    let res: Vec<_> = data
+        .par_chunks(4)
+        .filter_map(|mut line| if line != [0u8; 4] { 
+            line.read_u64::<LE>().ok()
+            } else { None })
+        .map(|mut line| {
+            let ch = ((line & 0b111) - 1) as usize;
+            line = line >> 3;  // throw away "channel" bits
+            let edge = (line & 0b1) == 1;
+            line = line >> 1;  // throw away "edge" bit
+            let time: u64 = line & bitmap[3];
+            line = line >> bit_order[3]; // throw away "time" bits
+            let tag: u16 = (line & bitmap[1]) as u16;
+            line = line >> bit_order[1]; // throw away "tag" bits
+            let lost: bool = (line & bitmap[0]) == 1;
+            let dl = DataLine::new(lost, tag, edge, time);
+            parsed_data[ch].lock()
+                .expect("Mutex lock error")
+                .push(dl);
+        }).collect();
+    Ok(parsed_data)
+}
+
+/// Parse a list file for time patch "43"
+fn parse_with_sweep_8bytes(data: &[u8], range: u64, bit_order: &[u8; 4],
+                           mut parsed_data: Vec<Vec<DataLine>>) 
+    -> Result<Vec<Vec<DataLine>>, Error> {
+    let num_of_bytes_per_line = ((bit_order.iter().sum::<u8>() + 4) / 8) as usize;
+    let bitmap = to_bits_u64(bit_order);
+    let res: Vec<_> = data
+        .chunks(4)
+        .filter_map(|mut line| if line != [0u8; 4] { 
+            line.read_u64::<LE>().ok()
+            } else { None })
+        .map(|mut line| {
+            let ch = ((line & 0b111) - 1) as usize;
+            line = line >> 3;  // throw away "channel" bits
+            let edge = (line & 0b1) == 1;
+            line = line >> 1;  // throw away "edge" bit
+            let time: u64 = (line & bitmap[3]) as u64;
+            line = line >> bit_order[3]; // throw away "time" bits
+            line = line >> bit_order[2]; // throw away "sweep" bits
+            let tag: u16 = (line & bitmap[1]) as u16;
+            line = line >> bit_order[1]; // throw away "tag" bits
+            let lost: bool = (line & bitmap[0]) == 1;
+            let dl = DataLine::new(lost, tag, edge, time);
+            parsed_data[ch].push(dl);
+        }).collect();
+    Ok(parsed_data)
+}
+
+
 /// Parse binary list files generated by a multiscaler.
 /// Parameters:
 /// fname - str
 pub fn analyze_lst(fname: &str, start_of_data: usize, range: u64,
-                                timepatch: &str, channel_map: Vec<u8>)
+                   timepatch: &str, channel_map: Vec<u8>)
     -> Result<Vec<Mutex<Vec<DataLine>>>, Error> {
 
     let data_with_headers = FileBuffer::open(fname).expect("bad file name");
@@ -401,6 +504,7 @@ pub fn analyze_lst(fname: &str, start_of_data: usize, range: u64,
     // Open the file and convert it to a usable format
 
     let chan_map = create_channel_vec(data_size, channel_map);
+
     let tp_enum = Timepatch::new(timepatch);
     let processed_data = match tp_enum {
         Timepatch::Tp0(func) => func(data, range, &TimepatchBits::new(timepatch), chan_map),
@@ -418,6 +522,49 @@ pub fn analyze_lst(fname: &str, start_of_data: usize, range: u64,
         Timepatch::Tpc3(func) => func(data, range, &TimepatchBits::new(timepatch), chan_map),
         Timepatch::Tp3(func) => func(data, range, &TimepatchBits::new(timepatch), chan_map),
     };
+    processed_data
+
+}
+
+pub fn analyze_lst_par(no: i32) -> Result<Vec<Mutex<Vec<DataLine>>>, Error> {
+    let fname = "1000nm_Pulsatile_Modulation_-9000mV_to_9500mV_1_sweep_each_32s_long009.lst";  //002
+    let start_of_data = 1568usize;  // 1565
+    let range = 80000u64;
+    let timepatch = "43";
+    let channel_map = vec![1, 0, 0, 0, 0, 1];
+
+    let data_with_headers = FileBuffer::open(fname).expect("bad file name");
+    let data_size: usize = (fs::metadata(fname)?.len() - start_of_data as u64) as usize;
+    let data = &data_with_headers[start_of_data..];
+    // Open the file and convert it to a usable format
+
+    let chan_map = create_channel_vec(data_size, channel_map);
+
+    let tp_enum = Timepatch::new(timepatch);
+    let processed_data = match tp_enum {
+        Timepatch::Tp43(func) => func(data, range, &TimepatchBits::new(timepatch), chan_map),
+        _ => panic!()
+    };
+    processed_data
+}
+
+pub fn analyze_lst_seq(no: i32) -> Result<Vec<Vec<DataLine>>, Error> {
+    
+    let fname = "1000nm_Pulsatile_Modulation_-9000mV_to_9500mV_1_sweep_each_32s_long009.lst"; // 002
+    let start_of_data = 1568usize;  // 1565
+    let range = 80000u64;
+    let timepatch = "43";
+    let channel_map = vec![1, 0, 0, 0, 0, 1];
+
+    let data_with_headers = FileBuffer::open(fname).expect("bad file name");
+    let data_size: usize = (fs::metadata(fname)?.len() - start_of_data as u64) as usize;
+    let data = &data_with_headers[start_of_data..];
+    // Open the file and convert it to a usable format
+
+    let chan_map = create_channel_vec_seq(data_size, channel_map.to_vec());
+
+    let tp_enum = TimepatchBits::new(timepatch);
+    let processed_data = parse_with_sweep_8bytes(data, range, &tp_enum, chan_map);
     processed_data
 
 }
