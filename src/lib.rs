@@ -1,15 +1,14 @@
-#![feature(rust_2018_preview, uniform_paths)]
+#![feature(uniform_paths)]
 
 use libc;
 #[macro_use] extern crate failure;
 #[macro_use] extern crate failure_derive;
-
+use num_traits;
 
 
 
 
 pub mod reading;
-pub mod from_playground;
 
 use crate::reading::{analyze_lst, DataLine};
 use libc::{uint64_t, c_char, c_void, size_t};

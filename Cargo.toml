@@ -1,5 +1,3 @@
-cargo-features = ["edition"]
-
 [package]
 name = "rread_lst"
 version = "0.1.0"
@@ -12,9 +10,9 @@ filebuffer = "0.3"
 libc = "0.2"
 failure = "0.1"
 failure_derive = "*"
-data-encoding = "2.1"
 rayon = "1.0.2"
 byteorder = "1.2.6"
+num-traits = "0.2.0"
 
 [lib]
 name = "rread_lst"
