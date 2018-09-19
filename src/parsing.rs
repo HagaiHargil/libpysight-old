@@ -10,9 +10,9 @@ use rayon::prelude::*;
 use byteorder::{ReadBytesExt, LE};
 use num_traits::sign::Unsigned;
 
-use helper_funcs::*;
+use crate::helper_funcs::*;
 
-const NUM_OF_INPUT_CHANNELS: usize = 6;
+pub const NUM_OF_INPUT_CHANNELS: usize = 6;
 
 
 /// The basic struct with all of the information
@@ -389,7 +389,7 @@ fn parse_Db(data: &[u8], range: u64, bit_order: &[u8; 4],
             line = line >> bit_order[3]; // throw away "time" bits
             let sweep: u16 = (line & bitmap[2]) as u16;
             time += range * (u64::from(sweep - 1));
-            let dl = DataLine::new(0, 0, edge, time);
+            let dl = DataLine::new(false, 0, edge, time);
             parsed_data[ch]
                 .lock()
                 .expect("Mutex lock error")
@@ -419,7 +419,7 @@ fn parse_f3(data: &[u8], range: u64, bit_order: &[u8; 4],
             time += range * (u64::from(sweep - 1));
             line = line >> bit_order[2]; // throw away "sweep" bits
             let lost: bool = (line & bitmap[0]) == 1;
-            line = line >> bit_order[0]  // throw away lost bit
+            line = line >> bit_order[0];  // throw away lost bit
             let tag: u16 = (line & bitmap[1]) as u16;
             
             let dl = DataLine::new(lost, tag, edge, time);

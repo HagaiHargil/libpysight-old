@@ -2,7 +2,7 @@
 use rread_lst;
 use filebuffer;
 
-use rread_lst::reading::analyze_lst;
+use rread_lst::parsing::analyze_lst;
 use std::collections::HashMap;
 use std::str;
 use filebuffer::FileBuffer;

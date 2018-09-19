@@ -8,9 +8,10 @@ use num_traits;
 
 
 
-pub mod reading;
+pub mod parsing;
+pub mod helper_funcs;
 
-use crate::reading::{analyze_lst, DataLine};
+use crate::parsing::{analyze_lst, DataLine};
 use libc::{uint64_t, c_char, c_void, size_t};
 use std::ffi::CStr;
 use std::{mem, slice};

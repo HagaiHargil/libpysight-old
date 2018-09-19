@@ -1,3 +1,7 @@
+use std::sync::Mutex;
+
+use crate::parsing::{NUM_OF_INPUT_CHANNELS, DataLine};
+
 
 /// Populates a vector of mutex-controlled vectors with the valid active channels of the
 /// experiment. Each channel is a vector, its size being `data_size + 1` if there was
@@ -5,7 +9,7 @@
 /// mutex to allow for multi-threaded parsing.
 /// Note - I don't use an Option<Mutex<Vec>>> here since I wasn't able to make it compile,
 /// although it probably is the more ergonomic version.
-fn create_channel_vec(data_size: usize, active_channels: Vec<u8>) -> Vec<Mutex<Vec<DataLine>>> {
+pub fn create_channel_vec(data_size: usize, active_channels: Vec<u8>) -> Vec<Mutex<Vec<DataLine>>> {
     let vec_with_data = Vec::with_capacity(data_size + 1);
     let vec_empty_chan = Vec::with_capacity(0);
     let mut chans = Vec::with_capacity(NUM_OF_INPUT_CHANNELS);
@@ -19,7 +23,7 @@ fn create_channel_vec(data_size: usize, active_channels: Vec<u8>) -> Vec<Mutex<V
     chans
 }
 
-fn create_channel_vec_seq(data_size: usize, active_channels: Vec<u8>) -> Vec<Vec<DataLine>> {
+pub fn create_channel_vec_seq(data_size: usize, active_channels: Vec<u8>) -> Vec<Vec<DataLine>> {
     let vec_with_data = Vec::with_capacity(data_size + 1);
     let vec_empty_chan = Vec::with_capacity(0);
     let mut chans = Vec::with_capacity(NUM_OF_INPUT_CHANNELS);
@@ -34,7 +38,7 @@ fn create_channel_vec_seq(data_size: usize, active_channels: Vec<u8>) -> Vec<Vec
 }
 
 
-fn to_bits_u16(bitarray: &[u8; 4]) -> [u16; 4] {
+pub fn to_bits_u16(bitarray: &[u8; 4]) -> [u16; 4] {
     let time_bits = "1".repeat(bitarray[3] as usize); 
     let time_bits = u16::from_str_radix(&time_bits, 2).unwrap();
 
@@ -51,7 +55,7 @@ fn to_bits_u16(bitarray: &[u8; 4]) -> [u16; 4] {
     bitmap  
 }
 
-fn to_bits_u32(bitarray: &[u8; 4]) -> [u32; 4] {
+pub fn to_bits_u32(bitarray: &[u8; 4]) -> [u32; 4] {
     let time_bits = "1".repeat(bitarray[3] as usize); 
     let time_bits = u32::from_str_radix(&time_bits, 2).unwrap();
 
@@ -68,7 +72,7 @@ fn to_bits_u32(bitarray: &[u8; 4]) -> [u32; 4] {
     bitmap  
 }
 
-fn to_bits_u64(bitarray: &[u8; 4]) -> [u64; 4] {
+pub fn to_bits_u64(bitarray: &[u8; 4]) -> [u64; 4] {
     let time_bits = "1".repeat(bitarray[3] as usize); 
     let time_bits = u64::from_str_radix(&time_bits, 2).unwrap();
 
