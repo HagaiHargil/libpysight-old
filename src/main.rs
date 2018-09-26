@@ -1,11 +1,8 @@
-#![feature(rust_2018_preview, uniform_paths)]
+#![feature(uniform_paths)]
 use rread_lst;
-use filebuffer;
 
-use rread_lst::parsing::analyze_lst;
+use rread_lst::parsing::DataLine;
 use std::collections::HashMap;
-use std::str;
-use filebuffer::FileBuffer;
 
 fn main() {
     let mut starts_map = HashMap::new();
@@ -18,7 +15,7 @@ fn main() {
     let range = 512u64;
     let timepatch = "5";
     let channel_map = vec![0, 0, 0, 0, 0, 1];
-    let res = analyze_lst(fname, start_of_data, range, timepatch, channel_map).unwrap();
+    let res = rread_lst::analyze_lst(fname, start_of_data, range, timepatch, channel_map).unwrap();
     println!("{:?}", res);
     // println!("{:?}", res[&0]);
 }

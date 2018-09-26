@@ -5,14 +5,16 @@ authors = ["Hagai Har-Gil <hagaihargil@protonmail.com>"]
 edition = '2018'
 
 [dependencies]
-bitreader = "0.3"
 filebuffer = "0.3"
-libc = "0.2"
 failure = "0.1"
-failure_derive = "*"
+failure_derive = "0.1"
 rayon = "1.0.2"
 byteorder = "1.2.6"
 num-traits = "0.2.0"
+
+[dependencies.pyo3]
+version = "0.4"
+features = ["extension-module"]
 
 [dev-dependencies]
 criterion = "0.2"
