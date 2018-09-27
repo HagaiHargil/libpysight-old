@@ -42,44 +42,62 @@ impl TimepatchBits {
 }
 
 #[derive(Clone, Debug)]
-pub enum TagTypes {
-    U8(u8),
-    U16(u16),
-}
-
-#[derive(Clone, Debug)]
-pub enum TimeTypes {
-    U16(u16),
-    U32(u32),
-    U64(u64),
-}
-
-#[derive(Clone, Debug)]
-pub struct DataLine {
+pub struct DataLineU8 {
     lost: Vec<bool>,
-    tag: Vec<TagTypes>,
+    tag: Vec<u8>,
     edge: Vec<bool>,
-    time: Vec<TimeTypes>,
+    time: Vec<u64>,
 }
 
-impl DataLine {
-    pub fn new(lost: Vec<bool>, tag: Vec<TagTypes>, edge: Vec<bool>, time: Vec<TimeTypes>) -> DataLine {
-        DataLine {lost, tag, edge, time}
+#[derive(Clone, Debug)]
+pub struct DataLineU16 {
+    lost: Vec<bool>,
+    tag: Vec<u16>,
+    edge: Vec<bool>,
+    time: Vec<u64>,
+}
+
+impl DataLineU8 {
+    pub fn new(lost: Vec<bool>, tag: Vec<u8>, edge: Vec<bool>, time: Vec<u64>) -> DataLineU8 {
+        DataLineU8 {lost, tag, edge, time}
     }
 
     pub fn push_lost(&mut self, val: bool) {
         &mut self.lost.push(val);
     }
 
-    pub fn push_tag(&mut self, val: TagTypes) {
+    pub fn push_edge(&mut self, val: bool) {
+        &mut self.edge.push(val);
+    }
+
+    pub fn push_tag(&mut self, val: u8) {
         &mut self.tag.push(val);
+    }
+
+    pub fn push_time(&mut self, val: u64) {
+        &mut self.time.push(val);
+    }
+}
+
+
+impl DataLineU16 {
+    pub fn new(lost: Vec<bool>, tag: Vec<u16>, edge: Vec<bool>, time: Vec<u64>) -> DataLineU16 {
+        DataLineU16 {lost, tag, edge, time}
+    }
+
+    pub fn push_lost(&mut self, val: bool) {
+        &mut self.lost.push(val);
     }
 
     pub fn push_edge(&mut self, val: bool) {
         &mut self.edge.push(val);
     }
 
-    pub fn push_time(&mut self, val: TimeTypes) {
+    pub fn push_tag(&mut self, val: u16) {
+        &mut self.tag.push(val);
+    }
+
+    pub fn push_time(&mut self, val: u64) {
         &mut self.time.push(val);
     }
 }
@@ -139,8 +157,8 @@ impl DataLine {
 
 /// Parse a list file for time patch "5"
 pub fn parse_5(data: &[u8], range: u64, bit_order: &[u8; 4],
-           mut parsed_data: Vec<Mutex<DataLine>>) 
-    -> Result<Vec<DataLine>, Error> {
+           mut parsed_data: Vec<Mutex<DataLineU16>>) 
+    -> Result<Vec<DataLineU16>, Error> {
     let bitmap = to_bits_u32(bit_order);
     let res: Vec<_> = data
         .par_chunks(4)
@@ -158,7 +176,7 @@ pub fn parse_5(data: &[u8], range: u64, bit_order: &[u8; 4],
             time += range * (u64::from(sweep - 1));
             let mut dataline = parsed_data[ch].lock().expect("Mutex lock error");
             dataline.push_edge(edge);
-            dataline.push_time(TimeTypes::U64(time));
+            dataline.push_time(time);
         }).collect();
     let parsed_data_no_mutex = parsed_data.into_iter().map(|x| x.into_inner().unwrap()).collect();
     Ok(parsed_data_no_mutex)

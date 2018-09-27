@@ -3,8 +3,7 @@ use num_traits::sign::Unsigned;
 use failure::Error;
 
 
-use crate::parsing::{NUM_OF_INPUT_CHANNELS, DataLine};
-
+use crate::parsing::*;
 
 /// Populates a vector of mutex-controlled vectors with the valid active channels of the
 /// experiment. Each channel is a vector, which contains another vector, holding four
@@ -14,10 +13,25 @@ use crate::parsing::{NUM_OF_INPUT_CHANNELS, DataLine};
 /// mutex to allow for multi-threaded parsing.
 /// Note - I don't use an Option<Mutex<Vec>>> here since I wasn't able to make it compile,
 /// although it probably is the more ergonomic version.
-pub fn create_channel_vec(timepatch: &str, active_channels: Vec<u8>,
-                          start_of_data: usize, data_size: usize) -> Vec<Mutex<DataLine>> {
-    let chan_with_data = generate_data_vectors(data_size, timepatch);
-    let empty_chan = DataLine::new(vec![], vec![], vec![], vec![]);
+pub fn create_channel_vec_u8(timepatch: &str, active_channels: Vec<u8>,
+                          start_of_data: usize, data_size: usize) -> Vec<Mutex<DataLineU8>> {
+    let chan_with_data = generate_data_vectors_u8(data_size, timepatch);
+    let empty_chan = DataLineU8::new(vec![], vec![], vec![], vec![]);
+    let mut chans = Vec::with_capacity(NUM_OF_INPUT_CHANNELS);
+    for is_active in active_channels.iter() {
+        if is_active == &1u8 {
+            chans.push(Mutex::new(chan_with_data.clone()));
+        } else {
+            chans.push(Mutex::new(empty_chan.clone()));
+        };
+    };
+    chans
+}
+
+pub fn create_channel_vec_u16(timepatch: &str, active_channels: Vec<u8>,
+                          start_of_data: usize, data_size: usize) -> Vec<Mutex<DataLineU16>> {
+    let chan_with_data = generate_data_vectors_u16(data_size, timepatch);
+    let empty_chan = DataLineU16::new(vec![], vec![], vec![], vec![]);
     let mut chans = Vec::with_capacity(NUM_OF_INPUT_CHANNELS);
     for is_active in active_channels.iter() {
         if is_active == &1u8 {
@@ -30,73 +44,55 @@ pub fn create_channel_vec(timepatch: &str, active_channels: Vec<u8>,
 }
 
 
+fn generate_data_vectors_u8(data_size: usize, timepatch: &str) -> DataLineU8 {
+    let num_of_lines: usize = match timepatch {
+        "2a" | "22" => calc_num_of_lines(data_size, 6),
+        "3" => calc_num_of_lines(data_size, 8),
+        _ => panic!("Timepatch not found for u8 variant {}", timepatch),
+    };
+
+    let ve: DataLineU8 = match timepatch {
+        "2a" => DataLineU8::new(vec![], 
+                                Vec::with_capacity(num_of_lines + 1), 
+                                Vec::with_capacity(num_of_lines), 
+                                Vec::with_capacity(data_size + 1)),
+        "22" => DataLineU8::new(vec![], 
+                                Vec::with_capacity(num_of_lines + 1), 
+                                Vec::with_capacity(num_of_lines), 
+                                Vec::with_capacity(data_size + 1)),
+        "3" => DataLineU8::new(Vec::with_capacity(num_of_lines + 1), 
+                               Vec::with_capacity(num_of_lines + 1), 
+                               Vec::with_capacity(num_of_lines), 
+                               Vec::with_capacity(data_size + 1)),
+        _ => panic!("Invalid timepatch value: {}", timepatch),
+    };
+    ve
+}
+
 /// Each timepatch value correlates to a specific vector composition which is detailed here.
 /// The order of vecs is lost, tag, edge, and time.
-fn generate_data_vectors(data_size: usize, timepatch: &str) -> DataLine {
+fn generate_data_vectors_u16(data_size: usize, timepatch: &str) -> DataLineU16 {
     let num_of_lines: usize = match timepatch {
         "0" => calc_num_of_lines(data_size, 2),
         "5" | "1" => calc_num_of_lines(data_size, 4),
-        "1a" | "2a" | "22" | "32" | "2" => calc_num_of_lines(data_size, 6),
-        "5b" | "Db" | "f3" | "43" | "c3" | "3" => calc_num_of_lines(data_size, 8),
-        _ => panic!("Timepatch not found {}", timepatch),
+        "1a" | "32" | "2" => calc_num_of_lines(data_size, 6),
+        "5b" | "Db" | "f3" | "43" | "c3" => calc_num_of_lines(data_size, 8),
+        _ => panic!("Timepatch not found for variant u16{}", timepatch),
     };
 
-    let ve: DataLine = match timepatch {
-        // "0" => vec![vec![], 
-        //             vec![], 
-        //             vec![Vec::with_capacity(num_of_lines + 1)], 
-        //             vec![Vec::with_capacity(data_size + 1)]],
-        "5" => DataLine::new(vec![], vec![], Vec::with_capacity(num_of_lines + 1), Vec::with_capacity(data_size + 1)), 
-
-        // "1" => vec![vec![], 
-        //             vec![], 
-        //             vec![Vec::with_capacity(num_of_lines + 1)], 
-        //             vec![Vec::with_capacity(data_size + 1)]],
-        // "1a" => vec![vec![], 
-        //              vec![], 
-        //              vec![Vec::with_capacity(num_of_lines + 1)], 
-        //              vec![Vec::with_capacity(data_size + 1)]],
-        // "2a" => vec![vec![], 
-        //              vec![Vec::with_capacity(num_of_lines + 1)], 
-        //              vec![Vec::with_capacity(num_of_lines)], 
-        //              vec![Vec::with_capacity(data_size + 1)]],
-        // "22" => vec![vec![], 
-        //              vec![Vec::with_capacity(num_of_lines + 1)], 
-        //              vec![Vec::with_capacity(num_of_lines)], 
-        //              vec![Vec::with_capacity(data_size + 1)]],
-        // "32" => vec![vec![Vec::with_capacity(num_of_lines + 1)], 
-        //              vec![], 
-        //              vec![Vec::with_capacity(num_of_lines)], 
-        //              vec![Vec::with_capacity(data_size + 1)]],
-        // "2" => vec![vec![], 
-        //             vec![], 
-        //             vec![Vec::with_capacity(num_of_lines + 1)], 
-        //             vec![Vec::with_capacity(data_size + 1)]],
-        // "5b" => vec![vec![Vec::with_capacity(num_of_lines + 1)], 
-        //              vec![Vec::with_capacity(num_of_lines * 2 + 1)], 
-        //              vec![Vec::with_capacity(num_of_lines)], 
-        //              vec![Vec::with_capacity(data_size + 1)]],
-        // "Db" => vec![vec![], 
-        //              vec![Vec::with_capacity(num_of_lines * 2 + 1)], 
-        //              vec![Vec::with_capacity(num_of_lines)], 
-        //              vec![Vec::with_capacity(data_size + 1)]],
-        // "f3" => vec![vec![Vec::with_capacity(num_of_lines + 1)], 
-        //              vec![Vec::with_capacity(num_of_lines * 2 + 1)], 
-        //              vec![Vec::with_capacity(num_of_lines)], 
-        //              vec![Vec::with_capacity(data_size + 1)]],
-        // "43" => vec![vec![Vec::with_capacity(num_of_lines + 1)], 
-        //              vec![Vec::with_capacity(num_of_lines * 2 + 1)], 
-        //              vec![Vec::with_capacity(num_of_lines)], 
-        //              vec![Vec::with_capacity(data_size + 1)]],
-        // "c3" => vec![vec![], 
-        //              vec![Vec::with_capacity(num_of_lines * 2 + 1)], 
-        //              vec![Vec::with_capacity(num_of_lines)], 
-        //              vec![Vec::with_capacity(data_size + 1)]],
-        // "3" => vec![vec![Vec::with_capacity(num_of_lines + 1)], 
-        //             vec![Vec::with_capacity(num_of_lines + 1)], 
-        //             vec![Vec::with_capacity(num_of_lines)], 
-        //             vec![Vec::with_capacity(data_size + 1)]],
-        _ => panic!("Invalid timepatch value: {}", timepatch),
+    let ve: DataLineU16 = match timepatch {
+        "0" => DataLineU16::new(vec![], vec![], Vec::with_capacity(num_of_lines + 1), Vec::with_capacity(data_size + 1)),
+        "5" => DataLineU16::new(vec![], vec![], Vec::with_capacity(num_of_lines + 1), Vec::with_capacity(data_size + 1)), 
+        "1" => DataLineU16::new(vec![], vec![], Vec::with_capacity(num_of_lines + 1), Vec::with_capacity(data_size + 1)),
+        "1a" => DataLineU16::new(vec![], vec![], Vec::with_capacity(num_of_lines + 1), Vec::with_capacity(data_size + 1)),
+        "32" => DataLineU16::new(Vec::with_capacity(num_of_lines + 1), vec![], Vec::with_capacity(num_of_lines), Vec::with_capacity(data_size + 1)),
+        "2" => DataLineU16::new(vec![], vec![], Vec::with_capacity(num_of_lines + 1), Vec::with_capacity(data_size + 1)),
+        "5b" => DataLineU16::new(Vec::with_capacity(num_of_lines + 1), Vec::with_capacity(num_of_lines * 2 + 1), Vec::with_capacity(num_of_lines), Vec::with_capacity(data_size + 1)),
+        "Db" => DataLineU16::new(vec![], Vec::with_capacity(num_of_lines * 2 + 1), Vec::with_capacity(num_of_lines), Vec::with_capacity(data_size + 1)),
+        "f3" => DataLineU16::new(Vec::with_capacity(num_of_lines + 1), Vec::with_capacity(num_of_lines * 2 + 1), Vec::with_capacity(num_of_lines), Vec::with_capacity(data_size + 1)),
+        "43" => DataLineU16::new(Vec::with_capacity(num_of_lines + 1), Vec::with_capacity(num_of_lines * 2 + 1), Vec::with_capacity(num_of_lines), Vec::with_capacity(data_size + 1)),
+        "c3" => DataLineU16::new(vec![], Vec::with_capacity(num_of_lines * 2 + 1), Vec::with_capacity(num_of_lines), Vec::with_capacity(data_size + 1)),
+        _ => panic!("Invalid timepatch value for u16 variant: {}", timepatch),
     };
     ve
 }
