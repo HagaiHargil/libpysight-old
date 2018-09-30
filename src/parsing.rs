@@ -1,11 +1,13 @@
 use rayon::prelude::*;
 use std::str;
+use std::collections::HashMap;
 use failure::Error;
 use std::sync::Mutex;
 use rayon::prelude::*;
 use byteorder::{ReadBytesExt, LE};
 use num_traits::sign::Unsigned;
-use pyo3::{ToPyObject, PyObject, PyTuple};
+use pyo3::prelude::*;
+use pyo3::{IntoPyObject, PyObject, PyDict};
 
 
 use crate::helper_funcs::*;
@@ -79,6 +81,17 @@ impl DataLineU8 {
     }
 }
 
+impl IntoPyObject for DataLineU8 {
+    fn into_object(self, py: Python) -> PyObject {
+        let dict = PyDict::new(py);
+        dict.set_item("lost", self.lost).expect("Lost insertion error.");
+        dict.set_item("tag", self.tag).expect("TAG insertion error.");
+        dict.set_item("edge", self.edge).expect("Edge insertion error.");
+        dict.set_item("time", self.time).expect("Time insertion error.");
+
+        dict.into()
+    }
+}
 
 impl DataLineU16 {
     pub fn new(lost: Vec<bool>, tag: Vec<u16>, edge: Vec<bool>, time: Vec<u64>) -> DataLineU16 {
@@ -99,6 +112,18 @@ impl DataLineU16 {
 
     pub fn push_time(&mut self, val: u64) {
         &mut self.time.push(val);
+    }
+}
+
+impl IntoPyObject for DataLineU16 {
+    fn into_object(self, py: Python) -> PyObject {
+        let dict = PyDict::new(py);
+        dict.set_item("lost", self.lost).expect("Lost insertion error.");
+        dict.set_item("tag", self.tag).expect("TAG insertion error.");
+        dict.set_item("edge", self.edge).expect("Edge insertion error.");
+        dict.set_item("time", self.time).expect("Time insertion error.");
+
+        dict.into()
     }
 }
 
@@ -158,7 +183,7 @@ impl DataLineU16 {
 /// Parse a list file for time patch "5"
 pub fn parse_5(data: &[u8], range: u64, bit_order: &[u8; 4],
            mut parsed_data: Vec<Mutex<DataLineU16>>) 
-    -> Result<Vec<DataLineU16>, Error> {
+    -> HashMap<usize, DataLineU16> {
     let bitmap = to_bits_u32(bit_order);
     let res: Vec<_> = data
         .par_chunks(4)
@@ -178,8 +203,12 @@ pub fn parse_5(data: &[u8], range: u64, bit_order: &[u8; 4],
             dataline.push_edge(edge);
             dataline.push_time(time);
         }).collect();
-    let parsed_data_no_mutex = parsed_data.into_iter().map(|x| x.into_inner().unwrap()).collect();
-    Ok(parsed_data_no_mutex)
+    let mut parsed_data_no_mutex: Vec<DataLineU16> = parsed_data.into_iter().map(|x| x.into_inner().unwrap()).collect();
+    let mut hmap: HashMap<usize, DataLineU16> = HashMap::new();
+    for key in 0..6usize {
+        hmap.insert(key + 1, parsed_data_no_mutex.remove(key)).unwrap();
+    };
+    hmap
 }
 
 

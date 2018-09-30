@@ -7,6 +7,7 @@ extern crate failure_derive;
 #[macro_use] extern crate pyo3;
 
 use std::fs;
+use std::collections::HashMap;
 
 
 use pyo3::prelude::*;
@@ -24,18 +25,18 @@ use helper_funcs::*;
 #[pymodinit]
 fn libpysight(py: Python, m: &PyModule) -> PyResult<()> {
    
-   #[pyfn(m, "read_binary_lst_u8")]
-   fn py_read_lst_u8(py: Python, file_path: String, start_of_data_pos: usize, range: u64, timpatch: String,
-            channel_map: Vec<u8>) -> PyResult<Vec<DataLineU8>> {
-        let result = py.allow_threads(move || analyze_lst_u8(&file_path, start_of_data_pos, range, &timpatch, channel_map));
-        result
-    }
+//    #[pyfn(m, "read_binary_lst_u8")]
+//    fn py_read_lst_u8(py: Python, file_path: String, start_of_data_pos: usize, range: u64, timpatch: String,
+//             channel_map: Vec<u8>) -> PyResult<Vec<DataLineU8>> {
+//         let result = py.allow_threads(move || analyze_lst_u8(&file_path, start_of_data_pos, range, &timpatch, channel_map));
+//         Ok(result)
+//     }
 
     #[pyfn(m, "read_binary_lst_u16")]
    fn py_read_lst_u16(py: Python, file_path: String, start_of_data_pos: usize, range: u64, timpatch: String,
-            channel_map: Vec<u8>) -> PyResult<Vec<DataLineU16>> {
+            channel_map: Vec<u8>) -> PyResult<i32> {
         let result = py.allow_threads(move || analyze_lst_u16(&file_path, start_of_data_pos, range, &timpatch, channel_map));
-        result
+        Ok(result)
     }
     Ok(())
 }
@@ -44,12 +45,12 @@ fn libpysight(py: Python, m: &PyModule) -> PyResult<()> {
 /// fname - str
 pub fn analyze_lst_u8(fname: &str, start_of_data: usize, range: u64,
                       timepatch: &str, channel_map: Vec<u8>)
-    -> Result<Vec<DataLineU8>, Error> {
+    -> Vec<DataLineU8> {
 
     // Open the file and convert it to a usable format
     let data_with_headers = FileBuffer::open(fname).expect("bad file name");
     let data = &data_with_headers[start_of_data..];
-    let data_size: usize = (fs::metadata(fname)?.len() - start_of_data as u64) as usize;
+    let data_size: usize = (fs::metadata(fname).unwrap().len() - start_of_data as u64) as usize;
     let chan_map = create_channel_vec_u8(timepatch, channel_map, start_of_data, data_size);
 
     let inputs = (data, range, &TimepatchBits::new(timepatch), chan_map);
@@ -68,12 +69,12 @@ pub fn analyze_lst_u8(fname: &str, start_of_data: usize, range: u64,
 /// fname - str
 pub fn analyze_lst_u16(fname: &str, start_of_data: usize, range: u64,
                        timepatch: &str, channel_map: Vec<u8>)
-    -> Result<Vec<DataLineU16>, Error> {
+    -> i32 {
 
     // Open the file and convert it to a usable format
     let data_with_headers = FileBuffer::open(fname).expect("bad file name");
     let data = &data_with_headers[start_of_data..];
-    let data_size: usize = (fs::metadata(fname)?.len() - start_of_data as u64) as usize;
+    let data_size: usize = (fs::metadata(fname).unwrap().len() - start_of_data as u64) as usize;
     let chan_map = create_channel_vec_u16(timepatch, channel_map, start_of_data, data_size);
 
     let inputs = (data, range, &TimepatchBits::new(timepatch), chan_map);
@@ -92,5 +93,6 @@ pub fn analyze_lst_u16(fname: &str, start_of_data: usize, range: u64,
         // "c3" => parse_c3(inputs.0, inputs.1, inputs.2, inputs.3),
         _ => panic!("Invalid timepatch value: {}", timepatch),
     };
-    processed_data
+    processed_data;
+    42
 }
