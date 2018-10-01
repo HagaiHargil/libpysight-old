@@ -14,7 +14,7 @@ use crate::parsing::*;
 /// Note - I don't use an Option<Mutex<Vec>>> here since I wasn't able to make it compile,
 /// although it probably is the more ergonomic version.
 pub fn create_channel_vec_u8(timepatch: &str, active_channels: Vec<u8>,
-                          start_of_data: usize, data_size: usize) -> Vec<Mutex<DataLineU8>> {
+                             data_size: usize) -> Vec<Mutex<DataLineU8>> {
     let chan_with_data = generate_data_vectors_u8(data_size, timepatch);
     let empty_chan = DataLineU8::new(vec![], vec![], vec![], vec![]);
     let mut chans = Vec::with_capacity(NUM_OF_INPUT_CHANNELS);
@@ -29,7 +29,7 @@ pub fn create_channel_vec_u8(timepatch: &str, active_channels: Vec<u8>,
 }
 
 pub fn create_channel_vec_u16(timepatch: &str, active_channels: Vec<u8>,
-                          start_of_data: usize, data_size: usize) -> Vec<Mutex<DataLineU16>> {
+                              data_size: usize) -> Vec<Mutex<DataLineU16>> {
     let chan_with_data = generate_data_vectors_u16(data_size, timepatch);
     let empty_chan = DataLineU16::new(vec![], vec![], vec![], vec![]);
     let mut chans = Vec::with_capacity(NUM_OF_INPUT_CHANNELS);
@@ -50,7 +50,6 @@ fn generate_data_vectors_u8(data_size: usize, timepatch: &str) -> DataLineU8 {
         "3" => calc_num_of_lines(data_size, 8),
         _ => panic!("Timepatch not found for u8 variant {}", timepatch),
     };
-
     let ve: DataLineU8 = match timepatch {
         "2a" => DataLineU8::new(vec![], 
                                 Vec::with_capacity(num_of_lines + 1), 
@@ -77,7 +76,7 @@ fn generate_data_vectors_u16(data_size: usize, timepatch: &str) -> DataLineU16 {
         "5" | "1" => calc_num_of_lines(data_size, 4),
         "1a" | "32" | "2" => calc_num_of_lines(data_size, 6),
         "5b" | "Db" | "f3" | "43" | "c3" => calc_num_of_lines(data_size, 8),
-        _ => panic!("Timepatch not found for variant u16{}", timepatch),
+        _ => panic!("Timepatch not found for variant u16 {}", timepatch),
     };
 
     let ve: DataLineU16 = match timepatch {

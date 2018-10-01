@@ -20,7 +20,7 @@ features = ["extension-module"]
 criterion = "0.2"
 
 [lib]
-name = "rread_lst"
+name = "libpysight"
 crate-type = ["cdylib"]
 
 [[bench]]

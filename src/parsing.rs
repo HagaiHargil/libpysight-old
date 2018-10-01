@@ -7,7 +7,7 @@ use rayon::prelude::*;
 use byteorder::{ReadBytesExt, LE};
 use num_traits::sign::Unsigned;
 use pyo3::prelude::*;
-use pyo3::{IntoPyObject, PyObject, PyDict};
+use pyo3::{ToPyObject, IntoPyObject, PyObject, PyDict};
 
 
 use crate::helper_funcs::*;
@@ -93,6 +93,18 @@ impl IntoPyObject for DataLineU8 {
     }
 }
 
+impl ToPyObject for DataLineU8 {
+    fn to_object(&self, py: Python) -> PyObject {
+        let dict = PyDict::new(py);
+        dict.set_item("lost", &self.lost).expect("Lost insertion error.");
+        dict.set_item("tag", &self.tag).expect("TAG insertion error.");
+        dict.set_item("edge", &self.edge).expect("Edge insertion error.");
+        dict.set_item("time", &self.time).expect("Time insertion error.");
+
+        dict.into()
+    }
+}
+
 impl DataLineU16 {
     pub fn new(lost: Vec<bool>, tag: Vec<u16>, edge: Vec<bool>, time: Vec<u64>) -> DataLineU16 {
         DataLineU16 {lost, tag, edge, time}
@@ -126,6 +138,79 @@ impl IntoPyObject for DataLineU16 {
         dict.into()
     }
 }
+
+impl ToPyObject for DataLineU16 {
+    fn to_object(&self, py: Python) -> PyObject {
+        let dict = PyDict::new(py);
+        dict.set_item("lost", &self.lost).expect("Lost insertion error.");
+        dict.set_item("tag", &self.tag).expect("TAG insertion error.");
+        dict.set_item("edge", &self.edge).expect("Edge insertion error.");
+        dict.set_item("time", &self.time).expect("Time insertion error.");
+
+        dict.into()
+    }
+}
+
+#[derive(Debug)]
+pub struct LstReturnU16 {
+    stop1: DataLineU16,
+    stop2: DataLineU16,
+    stop3: DataLineU16,
+    stop4: DataLineU16,
+    stop5: DataLineU16,
+    start: DataLineU16,
+}
+
+impl LstReturnU16 {
+    pub fn new(stop1: DataLineU16, stop2: DataLineU16, stop3: DataLineU16,
+               stop4: DataLineU16, stop5: DataLineU16, start: DataLineU16) -> Self {
+                   LstReturnU16 { stop1, stop2, stop3, stop4, stop5, start }
+               }
+}
+
+impl IntoPyObject for LstReturnU16 {
+    fn into_object(self, py: Python) -> PyObject {
+        let dict = PyDict::new(py);
+        dict.set_item("stop1", self.stop1).expect("STOP1 error");
+        dict.set_item("stop2", self.stop2).expect("STOP2 error");
+        dict.set_item("stop3", self.stop3).expect("STOP3 error");
+        dict.set_item("stop4", self.stop4).expect("STOP4 error");
+        dict.set_item("stop5", self.stop5).expect("STOP5 error");
+        dict.set_item("start", self.start).expect("START error");
+        dict.into()
+    }
+}
+
+#[derive(Debug)]
+pub struct LstReturnU8 {
+    stop1: DataLineU8,
+    stop2: DataLineU8,
+    stop3: DataLineU8,
+    stop4: DataLineU8,
+    stop5: DataLineU8,
+    start: DataLineU8,
+}
+
+impl LstReturnU8 {
+    pub fn new(stop1: DataLineU8, stop2: DataLineU8, stop3: DataLineU8,
+               stop4: DataLineU8, stop5: DataLineU8, start: DataLineU8) -> Self {
+                   LstReturnU8 { stop1, stop2, stop3, stop4, stop5, start }
+               }
+}
+
+impl IntoPyObject for LstReturnU8 {
+    fn into_object(self, py: Python) -> PyObject {
+        let dict = PyDict::new(py);
+        dict.set_item("stop1", self.stop1).expect("STOP1 error");
+        dict.set_item("stop2", self.stop2).expect("STOP2 error");
+        dict.set_item("stop3", self.stop3).expect("STOP3 error");
+        dict.set_item("stop4", self.stop4).expect("STOP4 error");
+        dict.set_item("stop5", self.stop5).expect("STOP5 error");
+        dict.set_item("start", self.start).expect("START error");
+        dict.into()
+    }
+}
+
 
 // /// Parse a list file for time patch "1"
 // pub fn parse_1(data: &[u8], range: u64, bit_order: &[u8; 4],
@@ -183,7 +268,7 @@ impl IntoPyObject for DataLineU16 {
 /// Parse a list file for time patch "5"
 pub fn parse_5(data: &[u8], range: u64, bit_order: &[u8; 4],
            mut parsed_data: Vec<Mutex<DataLineU16>>) 
-    -> HashMap<usize, DataLineU16> {
+    -> LstReturnU16 {
     let bitmap = to_bits_u32(bit_order);
     let res: Vec<_> = data
         .par_chunks(4)
@@ -191,6 +276,7 @@ pub fn parse_5(data: &[u8], range: u64, bit_order: &[u8; 4],
             line.read_u32::<LE>().ok()
             } else { None })
         .map(|mut line| {
+            println!("line: {:b}", line);
             let ch = ((line & 0b111) - 1) as usize;
             line = line >> 3;  // throw away "channel" bits
             let edge = (line & 0b1) == 1;
@@ -204,11 +290,12 @@ pub fn parse_5(data: &[u8], range: u64, bit_order: &[u8; 4],
             dataline.push_time(time);
         }).collect();
     let mut parsed_data_no_mutex: Vec<DataLineU16> = parsed_data.into_iter().map(|x| x.into_inner().unwrap()).collect();
-    let mut hmap: HashMap<usize, DataLineU16> = HashMap::new();
-    for key in 0..6usize {
-        hmap.insert(key + 1, parsed_data_no_mutex.remove(key)).unwrap();
-    };
-    hmap
+    LstReturnU16::new(parsed_data_no_mutex.remove(0),
+                      parsed_data_no_mutex.remove(0),
+                      parsed_data_no_mutex.remove(0),
+                      parsed_data_no_mutex.remove(0),
+                      parsed_data_no_mutex.remove(0),
+                      parsed_data_no_mutex.remove(0))
 }
 
 
@@ -451,34 +538,40 @@ pub fn parse_5(data: &[u8], range: u64, bit_order: &[u8; 4],
 // }
 
 
-// /// Parse a list file for time patch "43"
-// fn parse_43(data: &[u8], range: u64, bit_order: &[u8; 4],
-//             mut parsed_data: Vec<Mutex<Vec<DataLine>>>) 
-//     -> Result<Vec<Mutex<Vec<DataLine>>>, Error> {
-//     let bitmap = to_bits_u64(bit_order);
-//     let res: Vec<_> = data
-//         .par_chunks(4)
-//         .filter_map(|mut line| if line != [0u8; 4] { 
-//             line.read_u64::<LE>().ok()
-//             } else { None })
-//         .map(|mut line| {
-//             let ch = ((line & 0b111) - 1) as usize;
-//             line = line >> 3;  // throw away "channel" bits
-//             let edge = (line & 0b1) == 1;
-//             line = line >> 1;  // throw away "edge" bit
-//             let mut time: u64 = (line & bitmap[3]) as u64;
-//             line = line >> bit_order[3]; // throw away "time" bits
-//             let tag: u16 = (line & bitmap[1]) as u16;
-//             line = line >> bit_order[1]; // throw away "tag" bits
-//             let lost: bool = (line & bitmap[0]) == 1;
-//             let dl = DataLine::new(lost, tag, edge, time);
-//             parsed_data[ch]
-//                 .lock()
-//                 .expect("Mutex lock error")
-//                 .push(dl);
-//         }).collect();
-//     Ok(parsed_data)
-// }
+/// Parse a list file for time patch "43"
+pub fn parse_43(data: &[u8], range: u64, bit_order: &[u8; 4],
+                mut parsed_data: Vec<Mutex<DataLineU16>>) 
+    -> LstReturnU16 {
+    let bitmap = to_bits_u64(bit_order);
+    let res: Vec<_> = data
+        .par_chunks(8)
+        .filter_map(|mut line| if line != [0u8; 8] { 
+            line.read_u64::<LE>().ok()
+            } else { None })
+        .map(|mut line| {
+            let ch = ((line & 0b111) - 1) as usize;
+            line = line >> 3;  // throw away "channel" bits
+            let edge = (line & 0b1) == 1;
+            line = line >> 1;  // throw away "edge" bit
+            let mut time: u64 = (line & bitmap[3]) as u64;
+            line = line >> bit_order[3]; // throw away "time" bits
+            let tag: u16 = (line & bitmap[1]) as u16;
+            line = line >> bit_order[1]; // throw away "tag" bits
+            let lost: bool = (line & bitmap[0]) == 1;
+            let mut dataline = parsed_data[ch].lock().expect("Mutex lock error.");
+            dataline.push_edge(edge);
+            dataline.push_time(time);
+            dataline.push_tag(tag);
+            dataline.push_lost(lost);
+        }).collect();
+    let mut parsed_data_no_mutex: Vec<DataLineU16> = parsed_data.into_iter().map(|x| x.into_inner().unwrap()).collect();
+    LstReturnU16::new(parsed_data_no_mutex.remove(0),
+                      parsed_data_no_mutex.remove(0),
+                      parsed_data_no_mutex.remove(0),
+                      parsed_data_no_mutex.remove(0),
+                      parsed_data_no_mutex.remove(0),
+                      parsed_data_no_mutex.remove(0))
+}
 
 
 // /// Parse a list file for time patch "c3"
@@ -509,36 +602,40 @@ pub fn parse_5(data: &[u8], range: u64, bit_order: &[u8; 4],
 // }
 
 
-// /// Parse a list file for time patch "3"
-// fn parse_3(data: &[u8], range: u64, bit_order: &[u8; 4],
-//            mut parsed_data: Vec<Mutex<Vec<DataLine>>>) 
-//     -> Result<Vec<Mutex<Vec<DataLine>>>, Error> {
-//     let bitmap = to_bits_u64(bit_order);
-//     let res: Vec<_> = data
-//         .par_chunks(4)
-//         .filter_map(|mut line| if line != [0u8; 4] { 
-//             line.read_u64::<LE>().ok()
-//             } else { None })
-//         .map(|mut line| {
-//             let ch = ((line & 0b111) - 1) as usize;
-//             line = line >> 3;  // throw away "channel" bits
-//             let edge = (line & 0b1) == 1;
-//             line = line >> 1;  // throw away "edge" bit
-//             let mut time: u64 = (line & bitmap[3]) as u64;
-//             line = line >> bit_order[3]; // throw away "time" bits
-//             let tag: u16 = (line & bitmap[1]) as u16;
-//             line = line >> bit_order[1]; // throw away "tag" bits
-//             let lost: bool = (line & bitmap[0]) == 1;
-//             let dl = DataLine::new(lost, tag, edge, time);
-//             parsed_data[ch]
-//                 .lock()
-//                 .expect("Mutex lock error")
-//                 .push(dl);
-//         }).collect();
-//     Ok(parsed_data)
-// }
-
-
+/// Parse a list file for time patch "3"
+pub fn parse_3(data: &[u8], range: u64, bit_order: &[u8; 4],
+           mut parsed_data: Vec<Mutex<DataLineU8>>) 
+    -> LstReturnU8 {
+    let bitmap = to_bits_u64(bit_order);
+    let res: Vec<_> = data
+        .par_chunks(8)
+        .filter_map(|mut line| if line != [0u8; 8] { 
+            line.read_u64::<LE>().ok()
+            } else { None })
+        .map(|mut line| {
+            let ch = ((line & 0b111) - 1) as usize;
+            line = line >> 3;  // throw away "channel" bits
+            let edge = (line & 0b1) == 1;
+            line = line >> 1;  // throw away "edge" bit
+            let mut time: u64 = (line & bitmap[3]) as u64;
+            line = line >> bit_order[3]; // throw away "time" bits
+            let tag: u8 = (line & bitmap[1]) as u8;
+            line = line >> bit_order[1]; // throw away "tag" bits
+            let lost: bool = (line & bitmap[0]) == 1;
+            let mut dataline = parsed_data[ch].lock().expect("Mutex lock error");
+            dataline.push_edge(edge);
+            dataline.push_time(time);
+            dataline.push_tag(tag);
+            dataline.push_lost(lost);
+        }).collect();
+    let mut parsed_data_no_mutex: Vec<DataLineU8> = parsed_data.into_iter().map(|x| x.into_inner().unwrap()).collect();
+    LstReturnU8::new(parsed_data_no_mutex.remove(0),
+                     parsed_data_no_mutex.remove(0),
+                     parsed_data_no_mutex.remove(0),
+                     parsed_data_no_mutex.remove(0),
+                     parsed_data_no_mutex.remove(0),
+                     parsed_data_no_mutex.remove(0))
+}
 
 
 // /// Parse a list file for time patch "5"
@@ -572,7 +669,7 @@ pub fn parse_5(data: &[u8], range: u64, bit_order: &[u8; 4],
 // }
 
 
-// /// Parse a list file for time patch "43"
+/// Parse a list file for time patch "43"
 // fn seq_parse_43(data: &[u8], range: u64, bit_order: &[u8; 4],
 //                            mut parsed_data: Vec<Vec<DataLine>>) 
 //     -> Result<Vec<Vec<DataLine>>, Error> {

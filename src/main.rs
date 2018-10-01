@@ -6,9 +6,9 @@
 // fn main() {
 //     let mut starts_map = HashMap::new();
 //     starts_map.insert("trial1.lst", 2usize);
-//     starts_map.insert("4-byte006.lst", 1480usize);
-//     starts_map.insert("power_40p7_512unidir_gain900_thresh18mv_start_pmt1_stop1_lines_calcium_002.lst",
-//                       1554usize);
+//     starts_map.insert("4p5mW_850g_008.lst", 1565usize); // channels - 1, 6
+//     starts_map.insert("Mouse_LPT_189kHz_62p_Penetrating_arteries_FOV2_20x_Zoom_512lines_512px_400um_higher_than_Nominal_depth_800nm_039.lst",
+//                       1565usize); // channels - 2, 6
 //     let fname = "4-byte006.lst";
 //     let start_of_data = starts_map[fname];
 //     let range = 512u64;
