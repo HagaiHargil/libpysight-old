@@ -7,23 +7,19 @@ extern crate failure_derive;
 #[macro_use] extern crate pyo3;
 
 use std::fs;
-use std::collections::HashMap;
-
 
 use pyo3::prelude::*;
-use failure::Error;
-use num_traits::sign::Unsigned;
 use filebuffer::FileBuffer;
 
-pub mod parsing;
+pub mod binary_parsing;
 pub mod helper_funcs;
 
-use parsing::*;
+use binary_parsing::*;
 use helper_funcs::*;
 
-/// This module is a Python moudle implemented in Rust.
+/// Python bindings to this library
 #[pymodinit]
-fn libpysight(py: Python, m: &PyModule) -> PyResult<()> {
+fn libpysight(_py: Python, m: &PyModule) -> PyResult<()> {
    
    #[pyfn(m, "read_binary_lst_u8")]
    fn py_read_lst_u8(py: Python, file_path: String, start_of_data_pos: usize, range: u64, timpatch: String,
@@ -55,8 +51,8 @@ pub fn analyze_lst_u8(fname: &str, start_of_data: usize, range: u64,
     let inputs = (data, range, &TimepatchBits::new(timepatch), chan_map);
 
     let processed_data = match timepatch {
-        // "2a" => parse_2a(inputs.0, inputs.1, inputs.2, inputs.3)
-        // "22" => parse_22(inputs.0, inputs.1, inputs.2, inputs.3),
+        "2a" => parse_2a(inputs.0, inputs.1, inputs.2, inputs.3),
+        "22" => parse_22(inputs.0, inputs.1, inputs.2, inputs.3),
         "3" => parse_3(inputs.0, inputs.1, inputs.2, inputs.3),
         _ => panic!("Invalid timepatch value: {}", timepatch),
     };
@@ -79,17 +75,17 @@ pub fn analyze_lst_u16(fname: &str, start_of_data: usize, range: u64,
     let inputs = (data, range, &TimepatchBits::new(timepatch), chan_map);
 
     let processed_data = match timepatch {
-        // "0" => parse_0(inputs.0, inputs.1, inputs.2, inputs.3),
+        "0" => parse_0(inputs.0, inputs.1, inputs.2, inputs.3),
         "5" => parse_5(inputs.0, inputs.1, inputs.2, inputs.3),
-        // "1" => parse_1(inputs.0, inputs.1, inputs.2, inputs.3),
-        // "1a" => parse_1a(inputs.0, inputs.1, inputs.2, inputs.3),
-        // "32" => parse_32(inputs.0, inputs.1, inputs.2, inputs.3),
-        // "2" => parse_2(inputs.0, inputs.1, inputs.2, inputs.3),
-        // "5b" => parse_5b5(inputs.0, inputs.1, inputs.2, inputs.3),
-        // "Db" => parse_Db(inputs.0, inputs.1, inputs.2, inputs.3),
-        // "f3" => parse_f3(inputs.0, inputs.1, inputs.2, inputs.3),
+        "1" => parse_1(inputs.0, inputs.1, inputs.2, inputs.3),
+        "1a" => parse_1a(inputs.0, inputs.1, inputs.2, inputs.3),
+        "32" => parse_32(inputs.0, inputs.1, inputs.2, inputs.3),
+        "2" => parse_2(inputs.0, inputs.1, inputs.2, inputs.3),
+        "5b" => parse_5b(inputs.0, inputs.1, inputs.2, inputs.3),
+        "Db" => parse_Db(inputs.0, inputs.1, inputs.2, inputs.3),
+        "f3" => parse_f3(inputs.0, inputs.1, inputs.2, inputs.3),
         "43" => parse_43(inputs.0, inputs.1, inputs.2, inputs.3),
-        // "c3" => parse_c3(inputs.0, inputs.1, inputs.2, inputs.3),
+        "c3" => parse_c3(inputs.0, inputs.1, inputs.2, inputs.3),
         _ => panic!("Invalid timepatch value: {}", timepatch),
     };
     processed_data

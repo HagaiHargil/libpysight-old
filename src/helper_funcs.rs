@@ -1,9 +1,6 @@
 use std::sync::Mutex;
-use num_traits::sign::Unsigned;
-use failure::Error;
 
-
-use crate::parsing::*;
+use crate::binary_parsing::*;
 
 /// Populates a vector of mutex-controlled vectors with the valid active channels of the
 /// experiment. Each channel is a vector, which contains another vector, holding four
