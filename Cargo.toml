@@ -1,5 +1,5 @@
 [package]
-name = "rread-lst"
+name = "libpysight"
 version = "0.1.0"
 authors = ["Hagai Har-Gil <hagaihargil@protonmail.com>"]
 edition = '2018'
@@ -19,7 +19,7 @@ features = ["extension-module"]
 criterion = "0.2"
 
 [lib]
-name = "libpysight"
+name = "libps"
 crate-type = ["cdylib"]
 
 [[bench]]

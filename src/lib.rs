@@ -19,12 +19,12 @@ use helper_funcs::*;
 
 /// Python bindings to this library
 #[pymodinit]
-fn libpysight(_py: Python, m: &PyModule) -> PyResult<()> {
+fn libps(_py: Python, m: &PyModule) -> PyResult<()> {
    
    #[pyfn(m, "read_binary_lst_u8")]
-   fn py_read_lst_u8(py: Python, file_path: String, start_of_data_pos: usize, range: u64, timpatch: String,
+   fn py_read_lst_u8(py: Python, file_path: String, start_of_data_pos: usize, range: u64, timepatch: String,
             channel_map: Vec<u8>) -> PyResult<LstReturnU8> {
-        let result = py.allow_threads(move || analyze_lst_u8(&file_path, start_of_data_pos, range, &timpatch, channel_map));
+        let result = py.allow_threads(move || analyze_lst_u8(&file_path, start_of_data_pos, range, &timepatch, channel_map));
         Ok(result)
     }
 
